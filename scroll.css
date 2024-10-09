@@ -1,0 +1,16 @@
+.slide-letter {
+    display: inline-block;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.slide-letter.scroll-up {
+    transform: translateY(-100%);
+    opacity: 0;
+}
+
+.slide-letter.scroll-down {
+    transform: translateY(0);
+    opacity: 1;
+}
