@@ -15,8 +15,7 @@ File:
 <Files wp-login.php>
     AuthType Basic
     AuthName "Restricted Area"
-    AuthUserFile C:\_Webserwer\GrupaFaro\WordPress_6\.secure\.htpasswd
+    AuthUserFile path\to\.htpasswd
     Require valid-user
 </Files>
-
 ps. echo __DIR__; w info.php
