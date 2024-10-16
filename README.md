@@ -19,3 +19,6 @@ File:
     Require valid-user
 </Files>
 ps. echo __DIR__; w info.php
+
+https://pl.dental-tribune.com/
++ Interaktywna mapa online "Bezpieczny Gabinet"
