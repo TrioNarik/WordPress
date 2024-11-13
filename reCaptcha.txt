@@ -1,0 +1,18 @@
+<div class="g-recaptcha" data-sitekey="your-site-key"></div>
+===============
+$recaptcha_secret = 'your-secret-key';
+$recaptcha_response = $_POST['g-recaptcha-response'];
+
+$response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
+    'body' => [
+        'secret' => $recaptcha_secret,
+        'response' => $recaptcha_response,
+    ]
+]);
+
+$response_body = json_decode(wp_remote_retrieve_body($response));
+if ($response_body->success) {
+    // Kontynuuj obsługę formularza
+} else {
+    echo 'Nie udało się zweryfikować reCAPTCHA.';
+}
