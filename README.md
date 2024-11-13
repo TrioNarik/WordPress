@@ -1,3 +1,11 @@
+
+Klucze reCAPTCHA
+Użyj tego klucza witryny w kodzie HTML wyświetlanym użytkownikom przez Twoją witrynę:
+6Lfmd8gSAAAAAE11qV3fCPEVIsy4v9f_0Stp8f6w
+Użyj tego tajnego klucza do komunikacji między Twoją witryną a reCAPTCHA:
+6Lfmd8gSAAAAALhnRc13l9uWhGtBbe5sNonmC9QB
+
+
 ShortCode
 [contact_form email="ddd@gg.pl" success_page='']
 
