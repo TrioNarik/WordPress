@@ -1,0 +1,13 @@
+7. Używanie JavaScriptu (weryfikacja obecności)
+Niektóre boty nie uruchamiają JavaScriptu. Możesz dodać skrypt JavaScript, który ustawi wartość w ukrytym polu lub wywoła odpowiednią akcję. Jeśli formularz zostanie przesłany bez ustawionej wartości, oznacza to, że użytkownik nie miał włączonego JavaScriptu – co sugeruje, że jest botem.
+
+Przykład:
+HTML:
+<input type="hidden" name="js_check" id="js_check">
+<script>
+    document.getElementById('js_check').value = "enabled";
+</script>
+==========================
+if (!isset($_POST['js_check']) || $_POST['js_check'] !== 'enabled') {
+    die('Błąd: Formularz wymaga obsługi JavaScript.');
+}
