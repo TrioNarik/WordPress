@@ -1,0 +1,39 @@
+Kroki do stworzenia efektu:
+1. Przygotowanie głównego obiektu (ząb):
+Izolacja zęba:
+
+Użyj narzędzia Quick Selection Tool lub Pen Tool, aby wyciąć ząb z obrazu.
+Skopiuj go na nową warstwę (Ctrl+J / Cmd+J).
+Dodanie metalicznego połysku:
+
+Stosuj Blending Options:
+Gradient Overlay: wybierz gradient metaliczny (np. od srebrnego do ciemnoszarego).
+Bevel & Emboss: dostosuj ustawienia dla trójwymiarowego efektu.
+2. Tworzenie podświetlanego podium:
+Narysowanie okręgu:
+
+Wybierz Ellipse Tool i narysuj idealny okrąg na nowej warstwie.
+Wypełnij go dowolnym kolorem (będzie to baza podium).
+Podświetlenie:
+
+Ustaw Outer Glow w Blending Options:
+Kolor: jasny błękit lub biały.
+Rozmiar: dostosuj w zależności od potrzeb (np. 30–50 px).
+Efekt świetlistych linii:
+
+Narysuj cienkie linie (za pomocą Pen Tool lub Line Tool).
+Zastosuj Outer Glow lub Blur Effect (Filter > Blur > Gaussian Blur), aby uzyskać rozmyte świetliste paski.
+Dodanie warstw cienia i światła:
+
+Stwórz warstwę poniżej podium.
+Za pomocą Brush Tool z miękką krawędzią, dodaj delikatny cień z pod zęba i podium.
+3. Tło i efekty świetlne:
+Gradientowe tło:
+
+Na warstwie tła zastosuj Gradient Tool z przejściem od ciemnoszarego do czarnego, aby stworzyć głęboki efekt.
+Świetlne promienie:
+
+Wybierz Brush Tool z niską twardością, zmniejsz krycie (Opacity) i nałóż delikatne świetlne promienie w okolicy podium.
+Dodanie refleksów:
+
+Na nowej warstwie dodaj drobne białe punkty i rozmyj je (Gaussian Blur), aby uzyskać efekt drobnych refleksów.
