@@ -1,4 +1,48 @@
+<?php
+session_start();
 
+// Wybór języka
+if (isset($_GET['lang'])) {
+    $_SESSION['lang'] = $_GET['lang'];
+}
+
+$lang = $_SESSION['lang'] ?? 'pl';
+$translations = include("lang/$lang.php");
+?>
+
+<!DOCTYPE html>
+<html lang="<?= $lang ?>">
+<head>
+    <meta charset="UTF-8">
+    <title><?= $translations['form_title'] ?></title>
+</head>
+<body>
+    <nav>
+        <a href="?lang=pl">Polski</a> | <a href="?lang=en">English</a>
+    </nav>
+
+    <form>
+        <h1><?= $translations['form_title'] ?></h1>
+==================================================
+/lang
+    pl.php
+    en.php
+/index.php
+/config.php
+Pliki językowe (np. pl.php):
+
+<?php
+return [
+    'form_title' => 'Formularz zamówienia',
+    'personal_data' => 'Dane personalne',
+    'first_name' => 'Imię / Nazwa firmy',
+    'last_name' => 'Nazwisko / Numer NIP',
+    'email' => 'E-mail',
+    'submit_button' => 'Zamawiam',
+];
+
+
+        
 Klucze reCAPTCHA
 Użyj tego klucza witryny w kodzie HTML wyświetlanym użytkownikom przez Twoją witrynę:
 6Lfmd8gSAAAAAE11qV3fCPEVIsy4v9f_0Stp8f6w
