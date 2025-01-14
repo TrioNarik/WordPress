@@ -1,28 +1,14 @@
-<?php
-session_start();
-
-// Wybór języka
-if (isset($_GET['lang'])) {
-    $_SESSION['lang'] = $_GET['lang'];
-}
-
-$lang = $_SESSION['lang'] ?? 'pl';
-$translations = include("lang/$lang.php");
-?>
-
-<!DOCTYPE html>
-<html lang="<?= $lang ?>">
-<head>
-    <meta charset="UTF-8">
-    <title><?= $translations['form_title'] ?></title>
-</head>
-<body>
-    <nav>
-        <a href="?lang=pl">Polski</a> | <a href="?lang=en">English</a>
-    </nav>
-
-    <form>
-        <h1><?= $translations['form_title'] ?></h1>
+const calculateTotalPrice = (products, productCheckboxes) => {
+    let total = 0;
+    productCheckboxes.forEach((checkbox) => {
+        if (checkbox.checked) {
+            const productName = checkbox.value;
+            const productPrice = parseFloat(checkbox.dataset.price) || 0;  // Bezpośrednio z checkboxa
+            total += productPrice;
+        }
+    });
+    return total;
+};
 ==================================================
 /lang
     pl.php
