@@ -10,23 +10,6 @@ const calculateTotalPrice = (products, productCheckboxes) => {
     return total;
 };
 ==================================================
-/lang
-    pl.php
-    en.php
-/index.php
-/config.php
-Pliki językowe (np. pl.php):
-
-<?php
-return [
-    'form_title' => 'Formularz zamówienia',
-    'personal_data' => 'Dane personalne',
-    'first_name' => 'Imię / Nazwa firmy',
-    'last_name' => 'Nazwisko / Numer NIP',
-    'email' => 'E-mail',
-    'submit_button' => 'Zamawiam',
-];
-
 
         
 Klucze reCAPTCHA
