@@ -59,15 +59,15 @@ function displayProducts($items) {
     
     <!-- ================== -->
     <div class="row">
-        <?php if (isset($translate['products']['tack_locker']['include']['products'])): ?>
+        <?php if (isset($translate['package']['include']['products'])): ?>
             <div class="col-6">                
-                <?php displayProducts($translate['products']['tack_locker']['include']['products']); ?>
+                <?php displayProducts($translate['package']['include']['products']); ?>
             </div>        
         <?php endif; ?>
 
-        <?php if (isset($translate['products']['tack_locker']['include']['widgets'])): ?>
+        <?php if (isset($translate['package']['include']['widgets'])): ?>
             <div class="col-6">         
-                <?php displayProducts($translate['products']['tack_locker']['include']['widgets']); ?>
+                <?php displayProducts($translate['package']['include']['widgets']); ?>
             </div>           
         <?php endif; ?>
     </div>
