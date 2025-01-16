@@ -1,0 +1,69 @@
+<div class="notification" id="notification">
+    Produkt został dodany!
+</div>
+
+<style>
+        .box {
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .box.checked {
+            background-color: #e0ffe0;
+            border: 1px solid #00cc00;
+        }
+        
+
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #4caf50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .box.collapsed .detail, .pack-image {
+            display: none;
+        }
+        .box.collapsed .pack-image {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+</style>
+
+<script>
+        document.querySelectorAll('.circle-checkbox input[type="checkbox"]').forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                const box = checkbox.closest('.box');
+                const notification = document.getElementById('notification');
+                if (checkbox.checked) {
+                    box.classList.add('checked');
+                    box.classList.add('collapsed');
+                    notification.style.display = 'block';
+                    setTimeout(function() {
+                        notification.style.display = 'none';
+                    }, 3000); // Powiadomienie zniknie po 3 sekundach
+                } else {
+                    box.classList.remove('checked');
+                    box.classList.remove('collapsed');
+                }
+            });
+        });
+</script>
