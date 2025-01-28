@@ -1,16 +1,14 @@
-===================================================
-const calculateTotalPrice = (products, productCheckboxes) => {
-    let total = 0;
-    productCheckboxes.forEach((checkbox) => {
-        if (checkbox.checked) {
-            const productName = checkbox.value;
-            const productPrice = parseFloat(checkbox.dataset.price) || 0;  // Bezpośrednio z checkboxa
-            total += productPrice;
-        }
-    });
-    return total;
-};
-==================================================
+// ==============================
+// Funkcja do aktualizacji plików
+// ==============================
+function version($file) {
+    if (file_exists($file)) {
+        return $file . '?v=2.' . filemtime($file);
+    }
+    return $file;
+}
+...src="<?php echo version('js/rating.js'); ?>"
+
 
         
 Klucze reCAPTCHA
