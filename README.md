@@ -1,13 +1,5 @@
-// ==============================
-// Funkcja do aktualizacji plików
-// ==============================
-function version($file) {
-    if (file_exists($file)) {
-        return $file . '?v=2.' . filemtime($file);
-    }
-    return $file;
-}
-...src="<?php echo version('js/rating.js'); ?>"
+https://pin.it/6tLcJNPlV
+=============
 
 
         
