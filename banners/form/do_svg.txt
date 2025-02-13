@@ -1,4 +1,0 @@
-<!-- Personalizowany tekst, który zawsze ma być na wierzchu -->
-<text id="customText" x="50" y="18" font-size="5" fill="red" text-anchor="middle"
-    transform="rotate(0.5 10 10) scale(1, 0.5)">    
-</text>
