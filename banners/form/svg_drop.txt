@@ -1,0 +1,122 @@
+<svg width="200" height="200" viewBox="0 0 200 200">
+    <path class="cls-120" id="front-panel" d="M19.1,0c19.99.71,39.99,1.43,59.98,2.14,0,.91.01,1.83.02,2.74-.08,0-.15,0-.23,0,0,.05,0,.1,0,.15h.22c0,5.89,0,11.77,0,17.64-.08,0-.15,0-.23,0,0,.12,0,.25,0,.37.08,0,.15,0,.23,0v3.23h-.23c0,.13,0,.25,0,.38.08,0,.15,0,.23,0,0,32.59,0,65.18,0,97.77-20.01.34-40.01.69-60.02,1.03,0-41.82.01-83.64.02-125.46Z" pointer-events="visible"></path>
+</svg>
+
+
+
+.cls-120 {
+    fill: lightgray; /* Kolor wypełnienia */
+    stroke: #aaa; /* Kolor obramowania */
+    stroke-width: 2; /* Szerokość obramowania */
+    cursor: pointer; /* Kursor wskazujący interaktywność */
+}
+
+.cls-120.highlight {
+    animation: pulse 0.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        stroke: #aaa;
+    }
+    50% {
+        stroke: #f00;
+    }
+    100% {
+        stroke: #aaa;
+    }
+}
+
+
+
+const designs = document.querySelectorAll('.design');
+const frontPanel = document.getElementById('front-panel');
+
+let offsetX, offsetY;
+
+designs.forEach(design => {
+    design.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', design.id);
+        design.classList.add('dragging');
+
+        // Dodaj klasę do front-panel, aby rozpocząć oscylowanie
+        frontPanel.classList.add('highlight');
+    });
+
+    design.addEventListener('dragend', () => {
+        design.classList.remove('dragging');
+
+        // Usuń klasę z front-panel, aby zakończyć oscylowanie
+        frontPanel.classList.remove('highlight');
+    });
+});
+
+frontPanel.addEventListener('dragover', (e) => {
+    e.preventDefault();
+});
+
+frontPanel.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const designId = e.dataTransfer.getData('text/plain');
+    const draggedDesign = document.getElementById(designId);
+
+    // Usuń poprzedni element w frontPanel
+    const parentSvg = frontPanel.closest('svg');
+    if (parentSvg) {
+        parentSvg.querySelectorAll('.design').forEach(el => el.remove());
+    }
+
+    const newDesign = draggedDesign.cloneNode(true);
+    newDesign.classList.remove('dragging');
+    newDesign.setAttribute('draggable', 'false'); // Wyłącz przeciąganie
+
+    // Ustaw dokładną pozycję upuszczenia
+    const rect = frontPanel.getBoundingClientRect();
+    newDesign.style.position = 'absolute';
+    newDesign.style.left = `${e.clientX - rect.left - newDesign.offsetWidth / 2}px`;
+    newDesign.style.top = `${e.clientY - rect.top - newDesign.offsetHeight / 2}px`;
+
+    // Dodaj przycisk usuwania
+    const deleteBtn = document.createElement('button');
+    deleteBtn.classList.add('delete-btn');
+    deleteBtn.textContent = '×';
+    deleteBtn.onclick = (event) => {
+        event.stopPropagation();
+        newDesign.remove();
+    };
+    newDesign.appendChild(deleteBtn);
+
+    parentSvg.appendChild(newDesign);
+
+    enableDragging(newDesign, frontPanel);
+});
+
+function enableDragging(element, container) {
+    element.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('delete-btn')) return;
+
+        offsetX = e.clientX - element.getBoundingClientRect().left;
+        offsetY = e.clientY - element.getBoundingClientRect().top;
+
+        const onMouseMove = (moveEvent) => {
+            const rect = container.getBoundingClientRect();
+            let x = moveEvent.clientX - rect.left - offsetX;
+            let y = moveEvent.clientY - rect.top - offsetY;
+
+            // Ograniczenia ruchu w obrębie frontPanel z marginesem 10px
+            x = Math.max(10, Math.min(x, rect.width - element.offsetWidth - 10));
+            y = Math.max(10, Math.min(y, rect.height - element.offsetHeight - 10));
+
+            element.style.left = `${x}px`;
+            element.style.top = `${y}px`;
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
+}
