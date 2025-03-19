@@ -1,80 +1,57 @@
 <?php
-session_start();
+require_once 'include/init.php';
+require_once 'include/functions.php';
 
-// Lang
+
+// Ustawienie języka na podstawie GET lub sesji
 if (isset($_GET['lang'])) {
     $_SESSION['lang'] = $_GET['lang'];
+} else {
+    // Domyślny język to polski, jeśli nie ustawiono
+    $_SESSION['lang'] = $_SESSION['lang'] ?? 'pl'; 
 }
 
-$lang = $_SESSION['lang'] ?? 'pl';
+$lang = $_SESSION['lang'];
 
-$translate = include("lang/$lang.php");
+// Pobranie pliku tłumaczeń
+$lang_file = "lang/$lang.php";
+$translate = safeInclude($lang_file);
 
-// Config LANG'S
-$config_lang = require 'config_languages.php';
-$languages = $config_lang['languages'];
+// Pobranie konfiguracji języków
+$config_lang_file = 'config/languages.php';
+$config_lang = safeInclude($config_lang_file);
+$languages = $config_lang['languages'] ?? [];
 
-
-// Config Admin
-$config = require 'config_admin.php';
+// Pobranie konfiguracji administratora
+$config_file = 'config/admin.php';
+$config = safeInclude($config_file);
 
 
 // =========================================
-// Funkcja do wczytywania i dekodowania JSON
+// ========== JSON Dane ====================
 // =========================================
-function loadJsonFile($file_path, $default = []) {
-    if (file_exists($file_path)) {
-        $json_data = file_get_contents($file_path);
-        return json_decode($json_data, true);
-    } else {
-        return $default;
-    }
-}
 
-$colors = loadJsonFile('colors.json', [
-    ['name' => ['en' => 'Black'], 'color' => '#131516', 'ral' => 'RAL 9005']
-]);
+// Step-by-Step Tour [przewodnik] => OFF
+// $stepTours = loadJsonFile('step-tours.json');
 
-$fonts = loadJsonFile('fonts.json', [
-    ['name' => 'Arial', 'rating' => 4, 'badge' => 'top', 'fontFamily' => 'Arial']
-]);
+// Wesje plików do Download
+$downloads = loadJsonFile('downloads.json');
+// Kolory PAKI
+$PACKcolors = loadJsonFile('colors.json');
+// Kolory tekstu
+$font_colors = loadJsonFile('font-colors.json');
+// Grawery => położenie i wyrównanie 
+$grawer_positions = loadJsonFile('grawer-positions.json');
+// Tekst => położenie i wyrównanie 
+$text_positions = loadJsonFile('text-positions.json');
+// Rozmiar tekstu
+$sizes = loadJsonFile('font-sizes.json');
+// Formatowanie tekstu
+$styles = loadJsonFile('font-styles.json');
+// Czcionki
+$fonts = loadJsonFile('fonts.json');
+// =========================================
 
-$alignments = loadJsonFile('alignments.json', [
-    ['name' => ['en' => 'Align left'], 'alignment' => 'left', 'panel' => 'top']
-]);
-
-// ======================================
-// Funkcja do aktualizacji plików CSS/JPG
-// ======================================
-function version($file) {
-    if (file_exists($file)) {
-        return $file . '?v=3.' . filemtime($file);
-    }
-    return $file;
-}
-
-// ==============================
-// Funkcja do pobrania SVG
-// ==============================
-function svg_code($svg_file) {
-    if (file_exists($svg_file)) {
-        echo file_get_contents($svg_file);
-    }
-}
-
-// =============================
-// Funkcja do formatowania ceny
-// =============================
-function formatPrice($price) {
-    return number_format($price, 2, ',', ' '); // Formatowanie ceny z dwoma miejscami po przecinku i spacją jako separator tysięcy
-}
-function formatPriceWithSup($price) {
-    $parts = explode('.', number_format($price, 2, '.', ''));
-    if (count($parts) === 2) {
-        return $parts[0] . ',<sup>' . $parts[1] . '</sup>';
-    }
-    return $parts[0] . ',<sup>00</sup>';
-}
 
 
 
@@ -82,702 +59,863 @@ function formatPriceWithSup($price) {
 // Funkcja do wyświetlania elementów Pakietu
 // ==========================================
 function displayIncludePack($items) {
-    foreach ($items as $itemKey => $item) {
-        if ($item['active']) {
-            echo '<div class="d-flex justify-content-evenly align-items-center gap-2 my-1 my-md-3">';
-            echo '<input type="checkbox" id="' . $itemKey .'" name="' . $itemKey .' " checked="checked" disable>';
-            echo '<label for="' . $itemKey .'">';
-            echo $item['name'];
-            echo '</label>';
-            if (!empty($item['image'])) {
-                $imagePath = 'img/' . $item['image'];
-                $versionedImagePath = version($imagePath);
-                echo '<div class="include">';
-                echo '<img class="img-fluid" src="'. htmlspecialchars($versionedImagePath) .'" alt="' . $item['name'] .'" />';
-                echo '</div>';
-            }
+    if ($items) {
+        echo '<ul id="gadgets-list" class="gadgets row row-cols-3 row-cols-sm-4 list-unstyled my-1 my-md-3">';
+        foreach ($items as $itemKey => $item) {
+            if ($item['active']) {
+                echo '<li class="col-6 col-md-3 mb-4" data-id="'. $itemKey .'" data-name="'. $item['name'] .'">';
+                
+                  echo '<div class="gadget__image py-2 mb-2 text-center rounded">';
+                    if (!empty($item['image'])) {
+                        $imagePath = 'img/' . $item['image'];
+                        $versionedImagePath = version($imagePath);
+                        echo '<div class="thumbnail">';
+                            echo '<img loading="lazy" decoding="async" class="img-fluid" src="'. htmlspecialchars($versionedImagePath) .'" alt="' . $item['name'] .'">';
+                        echo '</div>';
+                    }
+                  echo '</div>';
 
-            echo '</div>';
+                  echo '<div class="gadget__name d-flex align-items-center justify-content-center gap-1">';
+                    echo '<span>';
+                        echo svg_code('checked.svg');
+                    echo '</span>';
+                    echo $item['name'];
+                  echo '</div>';
+
+                echo '</li>';
+            }
         }
+        echo '</ul>';
     }
 }
 
 
-function displayProductCheckbox($items, $currency) {
+function displayProductCheckbox($items, $currency, $button) {
     echo '<div class="row">';
     foreach ($items as $itemKey => $item) {
-        if ($item['active']) {
+        if ($item) {
 
             echo '<div class="col-12 col-md-4">';
-            echo '<div class="featured m-2 my-md-5 p-2 p-md-4">';
-            echo '<div class="d-flex justify-content-start align-items-center gap-4">';
-            echo '<input type="checkbox" id="' . htmlspecialchars($itemKey) . '" name="' . htmlspecialchars($item['name']) . '" data-price="'. $item['price'] .'"  data-shipping="'. $item['shipping']['price'] .'">';
-            echo '<label for="' . htmlspecialchars($itemKey) . '">' . htmlspecialchars($item['name']) . '</label>';
+
+                echo '<div class="featured m-2 p-2 p-md-4">';
+                
+                if (!empty($item['image'])) {
+
+                    $imagePath = 'img/' . $item['image'];
+                    $versionedImagePath = version($imagePath);
+
+                    echo '<div class="image d-flex justify-content-center align-items-center text-center my-md-3">';
+
+                    echo '<img loading="lazy" decoding="async" class="img-fluid" src="' . htmlspecialchars($versionedImagePath) . '" alt="' . htmlspecialchars($item['name']) . '">';
+                    echo '</div>';
+                }
+
+                    echo '<h6 class="text-center">'. $item['name'].'</h6>';
+                    echo '<div class="parameters d-flex justify-content-between align-items-center gap-3 py-2 my-4">';
+                        echo '<span class="text-center">'. htmlspecialchars($item['parameters']['name']).'</span>';
+                        echo '<span class="text-center">'. htmlspecialchars($item['parameters']['value']).'</span>';
+                    echo '</div>';
+
+                    echo '<div class="d-flex justify-content-between align-items-center">';
+                        if ($item['show_price']) {
+                            
+                                echo '<div id="'. $itemKey .'" class="col-4 col-md-5 product-price">';
+                                    echo '<div class="block-price text-center p-2">';
+                                        echo '<span>'. formatPriceWithSup($item['price']) .'</span> ';
+                                        echo '<span>'. htmlspecialchars($currency) .'</span>';
+                                    echo '</div>';
+                                echo '</div>';
+
+                                if ($item['shipping']['active']) {
+                                echo '<div id="'. $itemKey .'" class="col-8 col-md-7">';
+                                    echo '<div class="block-shipping text-end p-2">';
+                                        echo '<span>'. htmlspecialchars($item['shipping']['content']) .' '. formatPriceWithSup($item['shipping']['price']) .'</span>';
+                                    echo '</div>';
+                                echo '</div>';
+                                }
+                            
+                        }
+
+                        echo '<div class="d-flex justify-content-start align-items-center gap-4">';
+                        if ($item['active']) {
+                            echo '<button type="button" class="btn btn-warning addToCart" data-button-action="add-to-cart" data-key="' . htmlspecialchars($itemKey) . '" data-img="'. htmlspecialchars($item['image']) .'" data-name="'. htmlspecialchars($item['name']) .'" data-price="'. $item['price'] .'" data-shipping="'. $item['shipping']['price'] .'">';
+                            echo svg_code('cart.svg');
+                            echo '</button>';
+                        } else {
+                            echo '<button type="button" class="btn btn-outline-light disabled cart">';
+                            echo svg_code('cart.svg');
+                            echo '</button>';
+                        }
+                        echo '</div>';
+                
+                    echo '</div>';
+
             echo '</div>';
-            if (!empty($item['image'])) {
-
-                $imagePath = 'img/' . $item['image'];
-                $versionedImagePath = version($imagePath);
-
-                echo '<div class="image d-flex justify-content-center align-items-center text-center py-2 py-md-5">';
-
-                echo '<img class="img-fluid" src="' . htmlspecialchars($versionedImagePath) . '" alt="' . htmlspecialchars($item['name']) . '">';
-                echo '</div>';
-            }
-
-            if ($item['show_price']) {
-                echo '<div class="row parameters">';
-                    echo '<div id="'. $itemKey .'" class="col-12 col-md-5 product-price">';
-                        echo '<div class="block-price text-center p-2">';
-                            echo '<span itemprop="price" content="'. formatPrice($item['price']) .'">'. formatPriceWithSup($item['price']) .'</span> ';
-                            echo '<span itemprop="priceCurrency" content="'. $currency .'">'. $currency .'</span>';
-                        echo '</div>';
-                    echo '</div>';
-
-                    if ($item['shipping']['active']) {
-                    echo '<div id="'. $itemKey .'" class="col-12 col-md-7">';
-                        echo '<div class="block-shipping text-end p-2">';
-                            echo '<span>'. $item['shipping']['content'] .' '. formatPriceWithSup($item['shipping']['price']) .'</span>';
-                        echo '</div>';
-                    echo '</div>';
-                    }
-
-                echo '</div>';
-                
-                
-                echo '</div>';
-                echo '</div>';
-            }
-
+            echo '</div>';
 
         }
     }
     echo '</div>';
 }
 
+
+
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo $_SESSION['lang'] ?>" data-theme="dark">
+<html lang="pl" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $translate['title'] ?></title>
     <link rel="icon" href="img/hussaria-electra-100x100.png" sizes="32x32">
     
-    <meta name="description" content="✔ Hussaria Electra">
-    <meta name="keywords" content="hussaria electra, elektryczna paka, ">
+    <meta name="description" content="<?php echo $translate['package']['desc'] ?>">
+    <meta name="keywords" content="hussaria electra, elektryczna paka, paka z napędem elektrycznym">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
-    <meta property="og:title" content="<?php echo $translate['title'] ?>">
-    <meta property="og:description" content="...">
-    <meta property="og:image" content="https://electra.hussaria.pl/order_v2/img/elektryczna_paka.jpg">
-    <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:width" content="500" />
-    <meta property="og:image:height" content="500" />
-    <meta property="og:image:alt" content="><?php echo $translate['title'] ?>" />
-    <meta property="og:url" content="https://electra.hussaria.pl/order/">
+    <meta name="token" content="<?php echo $_SESSION['csrf_token']; ?>">
 
+    <meta property="og:title" content="<?php echo $translate['title'] ?>">
+    <meta property="og:description" content="<?php echo $translate['package']['desc'] ?>">
+    <meta property="og:image" content="https://electra.hussaria.pl/order_v2/img/elektryczna_paka.jpg">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    <meta property="og:image:alt" content="><?php echo $translate['title'] ?>">
+    <meta property="og:url" content="https://electra.hussaria.pl/order/">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/bootstrap.min.css">
-    <!-- Fonts for use -->
+    <!-- Fonts USED -->
     <link rel="stylesheet" href="https://use.typekit.net/vfx4swx.css">
     <!-- Main CSS -->
     <link rel="stylesheet" href="<?php echo version('css/style.css') ?>">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 <body>
-    <header>
-        <nav class="navbar-default py-3">
-            <section class="container-fluid">
-                <div class="row">
-                    <div class="col-xs-12 d-flex justify-content-end align-items-center gap-3">
-                        <button class="btn contact"><?php echo $config['admin']['office_phone'] ?></button>
+    <header id="header" class="container-fluid fixed-top py-1">
+        <div class="row">
+            <!-- LOGO -->
+            <div class="col-12 order-sm-1 col-md-3 order-md-1 d-flex align-items-center justify-content-between justify-content-md-start gap-1">
+                <div class="logo-wrapper">
+                    <a href="./"><img id="logo" class="logo" src="<?php echo version('img/hussaria_electra_logo_white.png') ?>" alt="<?php echo $translate['title'] ?>"></a>
+                </div>
+                <div class="info px-2">
+                    <div class="contact d-flex align-items-center justify-content-start gap-1">
+                        <?php 
+                            echo svg_code('phone.svg');
+                            echo "<span>" . $config['admin']['office_phone'] ."</span>";
+                        ?>
+                    </div>
+                </div>
+            </div>
+            <!-- end -->
 
-                        <ul class="d-flex justify-content-end align-items-center gap-1">
-                            <?php foreach ($languages as $code => $langData): ?>
-                                <li class="nav-item<?= ($lang == $code) ? ' active' : '' ?>">
-                                    <?php if ($lang != $code): ?>
-                                        <a class="nav-link" href="?lang=<?= $code ?>">
-                                    <?php endif; ?>
-                                        <img src="img/<?= $langData['img'] ?>" alt="<?= $langData['name'] ?>"  data-bs-toggle="tooltip" data-bs-placement="bottom" title="<?= $langData['name'] ?>">
-                                    <?php if ($lang != $code): ?>
-                                        </a>
-                                    <?php endif; ?>
-                                </li>
-                            <?php endforeach; ?>
-                            <li class="modeTheme mx-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="<?php echo$translate['settings']['theme'] ?>">
-                                <img id="toggleTheme" src="<?php echo version('img/brightness.png'); ?>" alt="<?php echo$translate['settings']['theme'] ?>" />
+            <!-- Delivery -->
+            <div class="col-12 order-sm-3 col-md-6 order-md-2 d-flex align-items-center justify-content-center delivery position-relative my-1 py-3">
+                <div class="d-flex align-items-center justify-content-start gap-3">
+                    <div class="delivery__content align-items-center justify-content-between gap-2">
+                        <div class="delivery__content__headline"><?php echo $translate['package']['shipping']['content'] ?></div>
+                        <div class="delivery__content__subheadline text-center px-2"><?php echo $translate['package']['shipping']['info'] ?></div>
+                    </div>
+                </div>
+            </div>
+            <!-- end -->
+
+            <!-- Navigation -->
+            <div class="col-12 order-sm-2 col-md-3 order-md-3 d-flex align-items-center justify-content-around justify-content-md-end gap-3">
+                <!-- Download -->
+                <div class="download mx-1">
+                    <ul class="d-flex flex-wrap align-items-center justify-content-start gap-1">
+                        <?php
+                        foreach ($downloads as $download) {
+                            echo '<li>';
+                            echo '<a class="d-flex justify-content-between align-items-center gap-2" data-version="'. $download['version'] .'" href="?generate=' .$download['link'] .'&token='. $_SESSION['csrf_token'] .'" data-bs-toggle="tooltip" data-bs-placement="bottom" title="'. $download['name'][$lang] .'">';
+                            echo '<span class="icon">';
+                            echo svg_code($download['svg']);
+                            echo '</span>';
+                            echo '<span>' . $download['version'] . '</span>';
+                            echo '</a></li>';
+                        } ?>
+                    </ul>
+                </div>
+                <!-- end -->
+
+                <!-- Cart -->
+                <div class="cart_button">
+                    <button type="button" id="cart" class="btn btn-warning position-relative step" data-step="4" data-bs-toggle="offcanvas" data-bs-target="#offcanvasRight" aria-controls="offcanvasRight" title="<?php echo $translate['form']['buttons']['view'] ?>">
+                        <span>
+                            <?php echo svg_code('cart.svg')?>
+                            <sup id="button_cart_total" class="position-absolute top-0 start-100 translate-middle badge border border-light rounded-circle bg-danger"></sup>
+                        </span>
+                    </button>
+                </div>
+                <!-- end -->
+
+                <!-- Languages -->
+                 <nav>
+                    <ul class="d-flex flex-wrap align-items-center justify-content-end gap-2">
+                        <?php foreach ($languages as $code => $langData): ?>
+                            <li class="nav-item<?= ($lang == $code) ? ' active' : '' ?>">
+                                <?php if ($lang != $code): ?>
+                                    <a class="nav-link" href="?lang=<?= $code ?>">
+                                <?php endif; ?>
+                                    <img src="img/<?= $langData['img'] ?>" alt="<?= $langData['name'] ?>"  data-bs-toggle="tooltip" data-bs-placement="bottom" title="<?= $langData['name'] ?>">
+                                <?php if ($lang != $code): ?>
+                                    </a>
+                                <?php endif; ?>
                             </li>
-                        </ul>
+                        <?php endforeach; ?>
+                        <li class="mx-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="" data-bs-original-title="Zmień motyw">
+                                
+                            </li>
+                    </ul>
+                 </nav>
+                
+                <button id="toggleTheme" type="button" class="btn p-0 border-0 bg-transparent" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-original-title="<?php echo $translate['settings']['theme'] ?>">
+                    <img src="<?php echo version('img/brightness.png') ?>" alt="<?php echo $translate['settings']['theme'] ?>">
+                </button>
+                <!-- end -->
+            </div>
+            <!-- end -->            
+        </div>
+    </header>
 
-                    </div>
+    <main id="main" class="container-fluid">
+        <div class="row configurator position-relative">
+            <!-- MODEL -->
+            <div class="col-12 configurator__model">
+                <div id="paka" class="configurator__model__view text-center">
+                    <?php updateSVGcodeWithTEXTitems(__DIR__ . '/svg/paka.svg', __DIR__ . '/json/text-positions.json', __DIR__ . '/json/grawer-positions.json', __DIR__ . '/json/flag-positions.json'); ?>
                 </div>
-            </section>
-        </nav>
-        
-        <section class="container-fluid">
-            <div class="row">
-                <div class="col-xs-12 col-md-4 offset-md-4 d-flex justify-content-center">
-                    <div class="logo-wrapper text-center py-2 py-md-5 my-2 my-md-5">
-                        <a href="./">
-                            <img id="logo" class="img-fluid logo" src="img/hussaria_electra_logo_white.png" alt="<?php echo $translate['title'] ?>">
-                        </a>
-                    </div>
+            </div>
+
+            <!-- OPTIONS -->
+            <div class="col-12 col-md-4 col-lg-3 configurator__panel position-absolute z-1 top-0 start-0">
+                <div class="configurator__panel__options p-1 p-md-3 my-1 my-md-3 step" data-step="1">
+                    <!-- COLORS PACK -->
+                    <section class="pack-colors d-flex flex-wrap align-items-center justify-content-between">
+                        <div class="options_label">
+                            <div class="d-flex align-items-center justify-content-start gap-3">
+                                <div class="icons">
+                                    <?php echo svg_code('palette.svg') ?>
+                                </div>
+                                <div class="option">
+                                    <h4 class="fs-6"><?php echo $translate['form']['colors']['fields']['label'] ?>:</h4>
+                                    <span class="help"><?php echo $translate['form']['colors']['fields']['help'] ?></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <?php
+                            $defaultColor = null;
+                            // Znajdź domyślny kolor z wszystkich kategorii
+                            foreach ($PACKcolors as $categoryKey => $category) {
+                                if (!empty($category['items'])) {
+                                    foreach ($category['items'] as $color) {
+                                        if (!empty($color['default']) && !empty($color['active'])) {
+                                            $defaultColor = $color;
+                                            break 2; // Wyjdź z obu pętli
+                                        }
+                                    }
+                                }
+                            }
+                        ?>
+
+                        <div class="dropdown">
+                            <button class="btn btn-colors d-flex align-items-center dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <span id="selectedColorPack" class="color-box me-1"
+                                    <?php if ($defaultColor): ?>
+                                        style="background-color: <?= htmlspecialchars($defaultColor['color'], ENT_QUOTES, 'UTF-8'); ?>;"
+                                    <?php endif; ?>
+                                ></span>
+                            </button>
+
+                            <ul class="colors dropdown-menu" id="packColor" data-option-type="select">
+                                <?php
+                                foreach ($PACKcolors as $categoryKey => $category) {
+                                    if (!empty($category['items'])) {
+                                        echo '<li class="dropdown-header">' . htmlspecialchars($category['category'][$lang], ENT_QUOTES, 'UTF-8') . '</li>';
+                                        echo '<li>';
+                                        echo '<div class="d-flex flex-wrap gap-2 px-3">';
+                                        foreach ($category['items'] as $color) {
+                                            $defaultAttr = isset($color['default']) && $color['default'] ? 1 : 0;
+
+                                            echo '<div style="background-color: ' . htmlspecialchars($color['color'], ENT_QUOTES, 'UTF-8') . ';" class="picker">';
+                                            echo '<a href="#" class="dropdown-item color-txt"
+                                                    data-category="' . htmlspecialchars($categoryKey, ENT_QUOTES, 'UTF-8') . '"
+                                                    data-default="' . $defaultAttr . '"
+                                                    data-color="' . htmlspecialchars($color['color'], ENT_QUOTES, 'UTF-8') . '"
+                                                    data-name="' . htmlspecialchars($color['name'][$lang], ENT_QUOTES, 'UTF-8') . '"
+                                                    data-color-ral="' . htmlspecialchars($color['ral'], ENT_QUOTES, 'UTF-8') . '"
+                                                    data-price="' . htmlspecialchars($color['price'][$lang], ENT_QUOTES, 'UTF-8') . '"
+                                                    data-promo="' . htmlspecialchars($color['promo'][$lang], ENT_QUOTES, 'UTF-8') . '"
+                                                    title="' . htmlspecialchars($color['name'][$lang], ENT_QUOTES, 'UTF-8') . '"></a>';
+                                            echo '</div>';
+                                        }
+                                        echo '</div>';
+                                        echo '</li>';
+                                    }
+                                }
+                                ?>
+                            </ul>
+                        </div>
+                    </section>
+                    <!-- end -->
                 </div>
+
+                <!-- BROKAT PACK  -->
+                <div class="configurator__panel__options p-1 p-md-3 my-1 my-md-3 d-none">
+                    
+                    <section class="pack-colors d-flex flex-wrap align-items-center justify-content-between">
+                        <div class="options_label">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <div class="icons">
+                                    <?php echo svg_code('glitter.svg') ?>
+                                </div>
+                                <div class="option">
+                                    <h4 class="fs-6"><?php echo $translate['form']['glitter']['fields']['label'] ?>:</h4>
+                                </div>
+                            </div>                                
+                        </div>
+
+                        <div class="glitter">
+                            <input type="checkbox" id="glitter" class="d-none" 
+                            data-option-type="checkbox"
+                            data-name="<?php echo $translate['form']['glitter']['title'] ?>"
+                            data-price="<?php echo $translate['form']['glitter']['price']['value'] ?>"
+                            data-promo="<?php echo $translate['form']['glitter']['price']['promo'] ?>">
+                            <label for="glitter" class="switch"><span></span></label>   
+                        </div>
+                    </section>
+                </div>
+                <!-- end -->
+
+                <div class="configurator__panel__options p-1 p-md-3 my-1 my-md-3 step" data-step="2">
+                    <!-- TEXT CUSTOMIZATION -->
+                        <section class="customization">
+                            <div class="options_label">
+                                <div class="d-flex flex-wrap align-items-start justify-content-between gap-1">
+                                    <div class="d-flex align-items-center justify-content-start gap-3">
+                                        <div class="icons">
+                                            <?php echo svg_code('person.svg') ?>
+                                        </div>
+                                        <div class="option">
+                                            <h4 class="fs-6"><?php echo $translate['form']['marker']['fields']['label'] ?>:</h4>
+                                        </div>
+                                    </div>
+                                </div>       
+                            </div>
+
+                            <!-- Personalization Option -->
+                            <!-- Grawer -->
+                            <?php if($grawer_positions): ?>
+                            <div class="text-positions d-flex flex-wrap align-items-center justify-content-between gap-1 my-2 p-2">
+                                <div class="help personalization"><?php echo $translate['form']['marker']['options']['grawer']['title'] ?>:</div>
+
+                                <ul class="d-flex flex-wrap align-items-center justify-content-end gap-1">
+                                    <?php      
+                                        foreach ($grawer_positions as $key => $value) {
+                                            if ($value[0]['active'] == 1) {
+                                                foreach ($value as $item) {
+                                                    echo '<li><a href="#'. htmlspecialchars($key) .'" class="nav-tab" data-target="'. htmlspecialchars($key) .'">' . htmlspecialchars($item['title'][$lang]) . "</a></li>";
+                                                }
+                                            }
+                                        }
+                                    ?>
+                                </ul>
+                            </div>
+                            <?php endif ?>
+                            <?php
+                                foreach ($grawer_positions as $key => $value) {
+                                    // Sprawdź, czy element jest aktywny
+                                    if ($value[0]['active'] == 1) {
+                                        echo '<div id="'. $key .'" class="positions-tabs">';
+                                            // Text Input
+                                            echo '<div class="form-group my-2 settings">';
+                                            echo '<div class="input-group">';
+                                                echo '<span class="input-group-text">';
+                                                foreach ($value as $item) {
+                                                    echo svg_code($item['icon']);
+                                                }
+                                                echo '</span>';
+                                                echo '<input type="text" class="form-control" id="text_'. $key .'" data-option-type="text"';
+                                                foreach ($value as $item) {
+                                                    echo 'data-name="'. $translate['form']['marker']['options']['grawer']['title'] .': '. $item['title'][$lang] .'"';
+                                                }
+                                                echo 'data-price="'. $translate['form']['marker']['options']['grawer']['price']['value'].'"';
+                                                echo 'data-promo="'. $translate['form']['marker']['options']['grawer']['price']['promo'].'"';
+                                                echo 'placeholder="'. $translate['form']['marker']['fields']['holder'] .'..." maxlength="15">';
+                                            echo '</div>';
+                                            echo '</div>';
+
+                                           
+                                            // Text Size
+                                            echo '<div class="d-flex align-items-center justify-content-between settings py-1">';
+                                                echo '<div class="fs-6">';
+                                                    echo ''. $translate['form']['marker']['tools']['font-size'] .':';
+                                                echo '</div>';
+                                                echo '<ul class="d-flex tools justify-content-start align-items-center gap-3" id="textSize_'. $key .'"
+                                                data-option-type="select"
+                                                data-name="'. $translate['form']['marker']['tools']['font-size'] .'">';
+                                                    foreach ($sizes as $size) {
+                                                        echo '<li><button type="button" class="tools"
+                                                        data-size-name="'. $size['name'][$lang] .'"
+                                                        data-size="'. $size['size'] .'"
+                                                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="'. $size['name'][$lang] .'">';
+                                                        echo svg_code($size['svg']);
+                                                        echo '</button>';
+                                                    }
+                                                echo '</ul>';
+                                            echo '</div>';
+
+                                            // Text Style
+                                            echo '<div class="d-flex align-items-center justify-content-between settings py-1">';
+                                                echo '<div class="fs-6">';
+                                                    echo ''. $translate['form']['marker']['tools']['font-style'] .':';
+                                                echo '</div>';
+                                                echo '<ul class="d-flex tools justify-content-start align-items-center gap-3" id="textStyle_'. $key .'"
+                                                data-option-type="select"
+                                                data-name="'. $translate['form']['marker']['tools']['font-style'] .'">';
+                                                    foreach ($styles as $style) {
+                                                        echo '<li><button type="button" class="tools" 
+                                                        data-style-name="'. $style['name'][$lang] .'"
+                                                        data-style="'. $style['style'] .'"
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="'. $style['name'][$lang] .'">';
+                                                        echo svg_code($style['svg']);
+                                                        echo '</button>';
+                                                    }
+                                                echo '</ul>';
+                                            echo '</div>';
+
+                                            // Text Fonts
+                                            echo '<div class="d-flex align-items-start justify-content-start flex-column settings p-1">';
+                                                echo '<div class="fs-6">';
+                                                    echo ''. $translate['form']['marker']['tools']['font-family'] .':';
+                                                echo '</div>';
+                                                echo '<ul class="scrollable-list rounded" id="fontFamily_'. $key .'"
+                                                data-option-type="select"
+                                                data-name="'. $translate['form']['marker']['tools']['font-family'] .'">';
+                                                        foreach ($fonts as $index => $font) {
+                                                            echo '<li><canvas id="canvasfont_'.$index.'_'. $key .'"
+                                                            data-font="1.25em ' . htmlspecialchars($font['fontFamily']) . ', sans-serif"
+                                                            data-family="' . htmlspecialchars($font['fontFamily']) . '"
+                                                            data-name="' . htmlspecialchars($font["name"]) . '"
+                                                            data-font-name="' . htmlspecialchars($font["name"]) . '"
+                                                            data-rating="' . htmlspecialchars($font["rating"]) . '"
+                                                            data-badge="' . htmlspecialchars($font["badge"]) . '">
+                                                            </canvas></li>';
+                                                        }
+                                                echo '</ul>';
+                                            echo '</div>';
+
+                                        echo '</div>';
+                                    }
+                                }
+                            ?>
+
+                            <!-- Text -->
+                            <?php if($text_positions): ?>
+                            <div class="text-positions d-flex flex-wrap align-items-center justify-content-between gap-1 my-2 p-2">
+                                <div class="help personalization"><?php echo $translate['form']['marker']['options']['texts']['title'] ?>:</div>
+
+                                <ul class="d-flex flex-wrap align-items-center justify-content-end gap-1">
+                                    <?php
+                                    
+                                        foreach ($text_positions as $key => $value) {
+                                            if ($value[0]['active'] == 1) {
+                                                foreach ($value as $item) {
+                                                    echo '<li><a href="#'. htmlspecialchars($key) .'" class="nav-tab" data-target="'. htmlspecialchars($key) .'">' . htmlspecialchars($item['title'][$lang]) . "</a></li>";
+                                                }
+                                            }
+                                        }
+                                    ?>
+                                </ul>
+                            </div>
+                            <?php endif ?>
+
+                            <!-- Personalization Settins -->
+                            <?php
+                                foreach ($text_positions as $key => $value) {
+                                    // Sprawdź, czy element jest aktywny
+                                    if ($value[0]['active'] == 1) {
+                                        echo '<div id="'. $key .'" class="positions-tabs">';
+                                            // Text Input
+                                            echo '<div class="form-group my-2 settings">';
+                                            echo '<div class="input-group">';
+                                                echo '<span class="input-group-text">';
+                                                foreach ($value as $item) {
+                                                    echo svg_code($item['icon']);
+                                                }
+                                                echo '</span>';
+                                                echo '<input type="text" class="form-control" id="text_'. $key .'" data-option-type="text"';
+                                                foreach ($value as $item) {
+                                                    echo 'data-name="'. $translate['form']['marker']['options']['texts']['title'] .': '. $item['title'][$lang] .'"';
+                                                }
+                                                echo 'data-price="'. $translate['form']['marker']['options']['texts']['price']['value'].'"';
+                                                echo 'data-promo="'. $translate['form']['marker']['options']['texts']['price']['promo'].'"';
+                                                echo 'placeholder="'. $translate['form']['marker']['fields']['holder'] .'..." maxlength="15">';
+                                            echo '</div>';
+                                            echo '</div>';
+
+                                            // Text Color
+                                            echo '<div class="d-flex align-items-center justify-content-between settings py-1">';
+                                            echo '<div class="fs-6">';
+                                                echo $translate['form']['marker']['tools']['font-color'] . ':';
+                                            echo '</div>';
+
+                                            echo '<div class="dropdown">';
+                                                echo '<button class="btn btn-colors d-flex align-items-center dropdown-toggle" type="button" data-bs-toggle="dropdown">';
+                                                echo '<span id="selectedColorText_' . $key . '" class="color-box me-2" style="background-color:'.$value[0]['start_color'].'"></span>';
+                                                echo '</button>';
+
+                                                echo '<ul class="colors dropdown-menu" id="textColor_' . $key . '"data-name="'. $translate['form']['marker']['tools']['font-color'] .'"
+                                                data-option-type="select">';
+
+                                                // Pobieramy wartości z JSON
+                                                $default_colors = isset($value[0]['default_colors']) ? $value[0]['default_colors'] : 0;
+                                                $specific_colors = isset($value[0]['specific_colors']) ? $value[0]['specific_colors'] : [];
+
+                                                // Jeśli `default_colors == 1`, dodajemy całą listę kolorów z `$font_colors`
+                                                if ($default_colors == 1) {
+                                                    foreach ($font_colors as $category) {
+                                                        echo '<li class="dropdown-header">' . $category['category'][$lang] . '</li>';
+                                                        echo '<li>';
+                                                        echo '<div class="d-flex flex-wrap gap-2 px-3">';
+                                                        foreach ($category['colors'] as $color) {
+                                                            echo '<div style="background-color: ' . $color . ';" class="picker">';
+                                                            echo '<a class="dropdown-item color-txt" data-color="' . $color . '" href="#" title="' . $color . '"></a>';
+                                                            echo '</div>';
+                                                        }
+                                                        echo '</div>';
+                                                        echo '</li>';
+                                                    }
+                                                }
+
+                                                // Jeśli `specific_colors` ma kolory, dodajemy je osobno
+                                                if (!empty($specific_colors)) {
+                                                    echo '<li class="dropdown-header">' . $translate['form']['marker']['tools']['font-color'] . '</li>';
+                                                    echo '<li>';
+                                                    echo '<div class="d-flex flex-wrap gap-2 px-3">';
+                                                    foreach ($specific_colors as $color) {
+                                                        echo '<div style="background-color: ' . $color . ';" class="picker">';
+                                                        echo '<a class="dropdown-item color-txt" data-color="' . $color . '" href="#" title="' . $color . '"></a>';
+                                                        echo '</div>';
+                                                    }
+                                                    echo '</div>';
+                                                    echo '</li>';
+                                                }
+
+                                                echo '</ul>';
+                                            echo '</div>';
+                                            echo '</div>';
+
+
+                                            // Text Align
+                                            echo '<div class="d-flex align-items-center justify-content-between settings py-1">';
+                                                echo '<div class="fs-6">';
+                                                    echo ''. $translate['form']['marker']['tools']['font-align'] .':';
+                                                echo '</div>';
+
+                                                echo '<ul class="d-flex tools justify-content-start align-items-center gap-3" id="textAlignt_'. $key .'" 
+                                                data-option-type="select"
+                                                data-name="'. $translate['form']['marker']['tools']['font-align'] .'">';
+
+                                                    foreach ($value as $item) {
+                                                        foreach ($item['align'] as $alignName => $alignData) {
+                                                            echo '<li><button type="button" class="tools"
+                                                             id="buttonText_'. $key .'_'. $alignName .'"
+                                                             data-x="'. $alignData['x'] .'"
+                                                             data-y="'. $alignData['y'] .'"
+                                                             data-anchor="'. $alignData['anchor'] .'"
+                                                             data-align-name="'. $alignData['name'][$lang] .'"
+                                                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="'. $alignData['name'][$lang] .'">';
+                                                            echo svg_code($alignData['svg']);
+                                                            echo '</button>';
+                                                        }
+                                                    }
+                                                echo '</ul>';
+                                            echo '</div>';
+
+                                            // Text Size
+                                            echo '<div class="d-flex align-items-center justify-content-between settings py-1">';
+                                                echo '<div class="fs-6">';
+                                                    echo ''. $translate['form']['marker']['tools']['font-size'] .':';
+                                                echo '</div>';
+                                                echo '<ul class="d-flex tools justify-content-start align-items-center gap-3" id="textSize_'. $key .'"
+                                                data-option-type="select"
+                                                data-name="'. $translate['form']['marker']['tools']['font-size'] .'">';
+                                                    foreach ($sizes as $size) {
+                                                        echo '<li><button type="button" class="tools"
+                                                        data-size-name="'. $size['name'][$lang] .'"
+                                                        data-size="'. $size['size'] .'"
+                                                        data-bs-toggle="tooltip" data-bs-placement="bottom" title="'. $size['name'][$lang] .'">';
+                                                        echo svg_code($size['svg']);
+                                                        echo '</button>';
+                                                    }
+                                                echo '</ul>';
+                                            echo '</div>';
+
+                                            // Text Style
+                                            echo '<div class="d-flex align-items-center justify-content-between settings py-1">';
+                                                echo '<div class="fs-6">';
+                                                    echo ''. $translate['form']['marker']['tools']['font-style'] .':';
+                                                echo '</div>';
+                                                echo '<ul class="d-flex tools justify-content-start align-items-center gap-3" id="textStyle_'. $key .'"
+                                                data-option-type="select"
+                                                data-name="'. $translate['form']['marker']['tools']['font-style'] .'">';
+                                                    foreach ($styles as $style) {
+                                                        echo '<li><button type="button" class="tools" 
+                                                        data-style-name="'. $style['name'][$lang] .'"
+                                                        data-style="'. $style['style'] .'"
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="'. $style['name'][$lang] .'">';
+                                                        echo svg_code($style['svg']);
+                                                        echo '</button>';
+                                                    }
+                                                echo '</ul>';
+                                            echo '</div>';
+
+                                            // Text Fonts
+                                            echo '<div class="d-flex align-items-start justify-content-start flex-column settings p-1">';
+                                                echo '<div class="fs-6">';
+                                                    echo ''. $translate['form']['marker']['tools']['font-family'] .':';
+                                                echo '</div>';
+                                                echo '<ul class="scrollable-list rounded" id="fontFamily_'. $key .'"
+                                                data-option-type="select"
+                                                data-name="'. $translate['form']['marker']['tools']['font-family'] .'">';
+                                                        foreach ($fonts as $index => $font) {
+                                                            echo '<li><canvas id="canvasfont_'.$index.'_'. $key .'"
+                                                            data-font="1.25em ' . htmlspecialchars($font['fontFamily']) . ', sans-serif"
+                                                            data-family="' . htmlspecialchars($font['fontFamily']) . '"
+                                                            data-name="' . htmlspecialchars($font["name"]) . '"
+                                                            data-font-name="' . htmlspecialchars($font["name"]) . '"
+                                                            data-rating="' . htmlspecialchars($font["rating"]) . '"
+                                                            data-badge="' . htmlspecialchars($font["badge"]) . '">
+                                                            </canvas></li>';
+                                                        }
+                                                echo '</ul>';
+                                            echo '</div>';
+
+                                        echo '</div>';
+                                    }
+                                }
+                            ?>
+                            <!-- end -->
+                           
+                        </section>
+                    <!-- end -->
+                </div>
+
+                <div class="configurator__panel__options p-1 p-md-3 my-1 my-md-3">
+                    <!-- FLAGS -->
+                    <section class="flags d-flex flex-wrap align-items-center justify-content-between">
+                            <div class="options_label">
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                    <div class="icons">
+                                        <?php echo svg_code('flag.svg') ?>
+                                    </div>
+                                    <div class="option">
+                                        <h4 class="fs-6"> <?php echo $translate['form']['marker']['flag']['fields']['label'] ?>:</h4>
+                                    </div>
+                                </div>                                
+                            </div>
+
+                            <div class="input-group w-50 d-none" id="flagInputGroup">
+                                <span class="input-group-text">
+                                    <?php echo '<img src="'. $_SESSION['flagUrl'] .'" alt="'. $_SESSION['country'] .'">' ?>
+                                </span>
+                                <input type="text" class="form-control" id="country_user" 
+                                data-option-type="text"
+                                data-name="<?php echo $translate['form']['marker']['flag']['fields']['holder'] ?>"
+                                placeholder="<?php echo $translate['form']['marker']['flag']['fields']['holder'] ?>..." value="<?php echo $_SESSION['country'] ?>" maxlength="10">
+                            </div>
+
+                            <div class="checkbox">
+                                <input type="checkbox" id="flag" class="d-none"
+                                data-option-type="checkbox"
+                                data-name="<?php echo $translate['form']['marker']['flag']['title'] ?>">
+                                <label for="flag" class="switch"><span></span></label>   
+                            </div>
+                        </section>
+                    <!-- end -->
+                </div>
+
+                <!-- SEND PDF -->
+                <div class="options_label p-1 p-md-3 sendFiles">
+                    <div class="d-flex align-items-center justify-content-start gap-3">
+                        <div class="icons">
+                            <?php echo svg_code('images.svg') ?>
+                        </div>
+                        <div class="option">
+                            <div class="info"><?php echo $translate['form']['info']['send-pdf'] ?>: <span id="contact_Email"><?php echo $translate['form']['info']['send-mail'] ?></span></div>
+                        </div>
+                    </div>                                
+                </div>
+                
+                <!-- SAVE BUTTON -->
+                <div class="my-2">
+                    <button class="btn btn-warning step" data-step="3" id="save-config" type="button" data-pack-name="<?php echo $translate['package']['name'] ?>" data-pack-price="<?php echo $translate['package']['price'] ?>" data-pack-promo="<?php echo $translate['package']['promo'] ?>" data-pack-delivery="<?php echo $translate['package']['shipping']['price'] ?>" data-pack-delivery-promo="<?php echo $translate['package']['shipping']['promo'] ?>" data-currency="<?php echo $translate['settings']['currency'] ?>" data-bs-toggle="offcanvas" data-bs-target="#offcanvasRight" aria-controls="offcanvasRight"><?php echo $translate['form']['buttons']['save'] ?></button>
+                </div>
+                <!-- end -->
+            </div>
+
+            <!-- HELPER -->
+            <div class="col-12 col-md-4 col-lg-3 configurator__helper position-absolute z-1 top-0 end-0 me-0 me-md-3 mt-0 mt-md-5 p-2 p-md-4">
+                <?php echo $translate['helper'] ?>
+            </div>
+
+
+        </div>
+
+        <section class="container-fluid py-3 py-md-5">
+            <div class="container">
+                <h4><?php echo $translate['package']['include']['intro_products'] ?>:</h4>
+                <?php displayIncludePack($translate['package']['include']['products']); ?>
             </div>
         </section>
 
-    </header>   
+    </main>
 
-    <form id="orderForm">
-        <main>
-            <section class="container-fluid model">
+    <footer id="footer">
+        <section class="container-fluid py-3 py-md-5">
+            <div class="container">
+                <h4><?php echo $translate['extra'] ?>:</h4>
+                <div id="featured_info_toCart" class="d-flex justify-content-center align-items-center gap-3" data-error-add-message="<?php echo $translate['form']['errors']['add-product'] ?>" data-error-delete-message="<?php echo $translate['form']['errors']['del-product'] ?>" data-delete-button="<?php echo $translate['form']['buttons']['delete'] ?>" data-total-cart-message="<?php echo $translate['form']['cart']['product-total'] ?>" data-quantity-cart-message="<?php echo $translate['form']['cart']['product-quantity'] ?>">
+                    <?php displayProductCheckbox($translate['products'], $translate['settings']['currency'], $translate['form']['buttons']['add']) ;?>
+                </div>
+            </div>
+        </section>
+        <div class="copyright text-center py-3">
+            © Copyright 2025 | <?php echo $translate['package']['name'] ?>
+        </div>
+    </footer>
 
-                <div class="row my-3">
-                    <div class="col-12 col-md-6 title">
-                        <div class="py-2">
-                            <h2><?php echo $translate['header'] ?></h2>
+
+    <!-- SIDEBAR -->
+    <section class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasRight" aria-labelledby="offcanvasRightLabel">
+        <div class="offcanvas-header">
+            <small id="offcanvasRightLabel"><?php echo $translate['header'] ?></small>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <!-- BODY -->
+            <h4 class="fs-6"><?php echo $translate['form']['buttons']['cart'] ?></h4>
+            <div id="cartBox" class="cartBox my-1 my-md-2 p-2">
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                    <div class="product d-flex align-items-center justify-content-start gap-2">
+                        <div class="thumbnail p-1">
+                            <img src="<?php echo version('img/he_thumbnail_elektryczna_paka.png'); ?>" alt="Elektryczna paka - HE">
+                        </div>
+                        <div class="product__name">
+                            <span id="mainProductName"><?php echo $translate['package']['name'] ?></span>
+                        </div>
+                    </div>
+                    <div class="product__price">
+                        <span id="mainProductPrice"><?php echo number_format($translate['package']['price'], 2, ',', ' ') ?></span> <span class="currency"><?php echo $translate['settings']['currency'] ?></span>
+                    </div>
+                </div>
+
+                <!-- Dodatkowe opcje, kolor -->
+                <div id="cartOptions" class="cartBoxOptions my-2">
+                    <small><?php echo $translate['form']['colors']['fields']['label'] ?>:</small>
+                    <div class="boxColor d-flex justify-content-between align-items-center">
+                        <div class="color-name d-flex justify-content-between align-items-center gap-2">
+                            <span id="mainProductColorMarker"></span>
+                            <span id="mainProductColorName"></span>
+                        </div>
+                        <div class="color-price">
+                            <span id="mainProductColorPrice"></span>
+                            <span class="currency"><?php echo $translate['settings']['currency'] ?></span>
                         </div>
                     </div>
                 </div>
 
-                <div class="row options my-md-5">
-                    <div class="col-7 col-md-3 my-5">
-                        
-                        <div class="d-flex justify-content-between align-items-center gap-3 p-3">
-                            <label for="favcolor">
-                                <?php echo $translate['form']['colors']['fields']['label'] ?>:
-                                <span class="info"><?php echo $translate['form']['colors']['fields']['help'] ?></span>
-                            </label>
-                            <input type="color" id="favcolor" class="pulsating-outline" name="color-picker"
-                            data-price="<?php echo $translate['package']['price'] ?>"
-                            data-promo="<?php if ($translate['package']['promo'] || $translate['package']['promo'] == 0) { ?><?php echo $translate['package']['promo'] ?><?php } ?>"
-                            data-shipping="<?php echo $translate['package']['shipping']['price'] ?>"
-                            data-delivery="<?php if ($translate['package']['shipping']['promo'] || $translate['package']['shipping']['promo'] === 0 || $translate['package']['shipping']['free']) { ?><?php echo $translate['package']['shipping']['promo'] ?><?php } ?>"
-                            data-currency="<?php echo $translate['settings']['currency'] ?>"
-                            list />
-                    
-                        </div>
-
-                        
-                        <div class="generator p-3">
-                            <div class="d-flex justify-content-between align-items-center gap-3">
-                                <label for="marker">
-                                    <?php echo $translate['form']['marker']['fields']['label'] ?>:
-                                    <span class="info"><?php echo $translate['form']['marker']['fields']['help'] ?></span>
-                                </label>
-                                <input type="checkbox" id="marker" name="marker">
-                            </div>
-
-                            <div id="personal" class="p-3">
-                                
-                                <div class="form-group row panelOptions p-2 pt-md-4 rounded-top">
-                                    <div class="col-12">
-                                        <input type="text" class="form-control" id="personalizationText" placeholder="<?php echo $translate['form']['marker']['fields']['holder'] ?>..." maxlength="28">
-                                    </div>
-                                </div>
-
-                                <div class="form-group row panelOptions p-2">
-                                    <div class="col-4 col-md-3">    
-                                        <div class="dropdown">
-                                            <button id="dropdownButton" class="btn btn-colors dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                <span id="selectedColorText" class="color-box"></span>
-                                            </button>
-                                        
-                                            <ul class="colors dropdown-menu p-0" id="textColor">
-                                                <?php
-                                                foreach ($colors as $color) {
-                                                    echo '<li style="background-color: ' . $color['color'] . ';">';
-                                                    echo '<a class="dropdown-item d-flex align-items-center justify-content-between p-3 color-txt" data-color="'. $color['color'] .'" data-ral="'. $color['ral'] .'" href="#">';
-                                                    echo '<span>' . $color['name'][$lang] . '</span>';
-                                                    echo '<span class="ral">' . $color['ral'] . '</span>';
-                                                    echo '</a></li>';
-                                                } ?>
-                                            </ul>
-                                        </div>
-
-
-                                            <style>
-                                            .btn-colors,
-                                            .btn-aligments {
-                                                background: var(--grey-color);
-                                            }
-
-                                            .color-box {
-                                                display: inline-block;
-                                                width: 1.5em;
-                                                height: 1.5em;
-                                                border: 1px solid var(--main-color);
-                                                border-radius: var(--radius);
-                                                background-color: var(--main-color);
-                                        }
-                                            </style>
-
-                                            <script>
-                                            document.querySelectorAll('.color-txt').forEach(item => {
-                                                item.addEventListener('click', function(event) {
-                                                event.preventDefault();
-                                                let color = this.getAttribute('data-color');
-                                                document.getElementById('selectedColorText').style.backgroundColor = color;
-                                                // document.getElementById('dropdownButton').textContent = this.textContent;
-                                                });
-                                            });
-                                            </script>    
-
-                                    </div>
-
-                                    <div class="col-4 col-md-3">
-                                        <div class="dropdown">
-                                            <button id="dropdownButtonPosition" class="btn btn-aligments dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M1.992 4.25c0-.203.07-.375.211-.516a.741.741 0 0 1 .54-.234h8.507c.203 0 .375.078.516.234.156.141.234.313.234.516a.74.74 0 0 1-.234.54.701.701 0 0 1-.516.21H2.742a.782.782 0 0 1-.539-.21.782.782 0 0 1-.21-.54zm0 4.125c0-.203.07-.375.211-.516a.741.741 0 0 1 .54-.234h13.5c.218 0 .398.078.538.234.14.141.211.313.211.516s-.07.383-.21.54a.73.73 0 0 1-.54.21h-13.5a.782.782 0 0 1-.539-.21.782.782 0 0 1-.21-.54zm.75 3.375a.74.74 0 0 0-.539.234.701.701 0 0 0-.21.516c0 .203.07.383.21.54.156.14.336.21.54.21h16.5a.73.73 0 0 0 .538-.21.782.782 0 0 0 .211-.54.701.701 0 0 0-.21-.516.693.693 0 0 0-.54-.234h-16.5zm-.75 4.875c0-.203.07-.375.211-.516a.74.74 0 0 1 .54-.234h8.507c.203 0 .375.078.516.234.156.141.234.313.234.516a.741.741 0 0 1-.234.54.701.701 0 0 1-.516.21H2.742a.782.782 0 0 1-.539-.21.782.782 0 0 1-.21-.54zM2.742 20a.74.74 0 0 0-.539.234.701.701 0 0 0-.21.516c0 .203.07.383.21.54.156.14.336.21.54.21h18.515c.203 0 .375-.07.515-.21a.741.741 0 0 0 .235-.54.667.667 0 0 0-.235-.516.667.667 0 0 0-.515-.234H2.742z"></path></svg>
-                                            </button>
-                                        
-                                            <ul class="aligments gap-2 p-3 dropdown-menu" id="textAlignt">
-                                                <?php
-                                                // Wyświetlenie SVG
-                                                foreach ($alignments as $align) {
-                                                    echo '<li><button type="button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="'. $align['name'][$lang] .'" onclick="setAlignment(\''. $align['alignment'] .'\')">';
-                                                    echo svg_code($align['svg']);
-                                                    echo '</button>';
-                                                }
-                                                ?>
-                                            </ul>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-4 col-md-3">
-                                        <div class="dropdown">
-                                            <button id="dropdownButtonPosition" class="btn btn-aligments dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7.43 6.96a.809.809 0 0 0-.211-.257.658.658 0 0 0-.258-.164.443.443 0 0 0-.14-.023.386.386 0 0 0-.118-.024.443.443 0 0 0-.14.024.442.442 0 0 0-.141.023.878.878 0 0 0-.281.164.99.99 0 0 0-.188.258l-4.008 9.562a.704.704 0 0 0 0 .563.635.635 0 0 0 .422.375.704.704 0 0 0 .563 0 .795.795 0 0 0 .422-.422L4.219 15h4.968l.844 2.04a.807.807 0 0 0 .399.42.82.82 0 0 0 .61 0 .632.632 0 0 0 .398-.374.705.705 0 0 0 0-.563L7.43 6.961zm-.727 2.134L8.555 13.5H4.852l1.851-4.406zM18.047 6.96a.808.808 0 0 0-.211-.258.657.657 0 0 0-.258-.164.442.442 0 0 0-.14-.023.442.442 0 0 0-.141-.024.386.386 0 0 0-.117.024.442.442 0 0 0-.14.023.878.878 0 0 0-.282.164.99.99 0 0 0-.188.258l-4.008 9.562a.705.705 0 0 0 0 .563c.079.187.211.312.399.375a.76.76 0 0 0 .586 0 .796.796 0 0 0 .422-.422L14.813 15h4.968l.867 2.04a.807.807 0 0 0 .399.42.76.76 0 0 0 .586 0 .635.635 0 0 0 .422-.374.705.705 0 0 0 0-.563l-4.008-9.562zm1.101 6.539h-3.703l1.852-4.406 1.851 4.406z"></path></svg>
-                                            </button>
-                                        
-                                            <ul class="aligments gap-2 p-3 dropdown-menu" id="textAlignt">
-                                                <?php
-                                                // Wyświetlenie SVG
-                                                foreach ($alignments as $align) {
-                                                    echo '<li><button type="button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="'. $align['name'][$lang] .'" onclick="setAlignment(\''. $align['alignment'] .'\')">';
-                                                    echo svg_code($align['svg']);
-                                                    echo '</button>';
-                                                }
-                                                ?>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-group row panelOptions p-2 rounded-bottom">
-                                    
-                                    <ul class="scrollable-list rounded">
-                                        <?php
-                                        // ==== Fonts ====
-                                        foreach ($fonts as $index => $font) {
-                                            echo '<li><canvas id="canvasfont_'.$index.'" 
-                                            data-font="1.25em ' . htmlspecialchars($font['fontFamily']) . ', sans-serif"
-                                            data-family="' . htmlspecialchars($font['fontFamily']) . '"
-                                            data-name="' . htmlspecialchars($font["name"]) . '"
-                                            data-rating="' . htmlspecialchars($font["rating"]) . '"
-                                            data-badge="' . htmlspecialchars($font["badge"]) . '">
-                                            </canvas></li>';
-                        
-                                        } ?>
-                                    </ul>
-                                    
-                                </div>
-
-                                        
-
-                                    
-                                
-
-                                <div class="d-flex justify-content-start align-items-center gap-3">
-                                    <label for="flag">
-                                    <?php echo $translate['form']['flag']['fields']['label'] ?>:
-                                    </label>
-                                    <input type="checkbox" id="flag" name="flag">
-                                </div>
-
-                                <p class="info"><?php echo $translate['form']['flag']['fields']['help'] ?></p>
-                                        
-                            </div>
-                        </div>
-                        
-
-                        
-
-
-                    </div>
-
-                    <div class="col-5 col-md-6">
-                        <section id="image_paka" class="text-center">
-                            <div class="shipping p-1 p-md-3">
-                                <p><small><?php echo $translate['package']['shipping']['info'] ?></small></p>
-                                <h5><?php echo $translate['package']['shipping']['content'] ?></h5>
-                                <p class="source"><?php echo $translate['package']['shipping']['source'] ?></p>
-                            </div>
-                            <?php svg_code('paka.svg') ?>
-                        </section>
-                    </div>
-
-                    <div class="col-12 col-md-3">
-                        <section class="wall mx-1 mx-md-4 p-1 p-md-4">
-                            <h4 class="neon text-center"><?php echo $translate['package']['include']['intro_products'] ?>:</h4>
-                            <?php displayIncludePack($translate['package']['include']['products']); ?>
-                        </section>
-                    </div>
-
-                </div>
-
-            </section>
-
-            <section class="container-fluid model extra py-3">
-                <div class="container">
-                <h4 class="neon"><?php echo $translate['extra'] ?>:</h4>
-                <div class="d-flex justify-content-center align-items-center gap-3">
-                    <?php displayProductCheckbox($translate['products'], $translate['settings']['currency']) ;?>
-                </div>
-                </div>
-            </section>
-
-            <section class="container">
-                <div class="row text-center text-md-end">
-                    
-                    <p><?php echo $translate['form']['order_summary']['value'] ?>: <span id="totalPrice"></span> <?php echo $translate['settings']['currency'] ?></p>
-                    <p><?php echo $translate['form']['order_summary']['cost'] ?>: <span id="totalShipping"></span> <?php echo $translate['settings']['currency'] ?></p>
-                    <div class="col-12 order">
-                        <div class="py-2">
-                            <h4><?php echo $translate['form']['order_summary']['amount'] ?>: <span id="countPrice">20.250</span> <span><?php echo $translate['settings']['currency'] ?></span></h4>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <footer class="container py-2">
-            
-                
-                    <h4><?php echo $translate['form']['person']['title'] ?></h4>
-                    <div class="row">
-                        <div class="col-12 col-md-6">
-                            <div class="form-group">
-                                <label for="name"><?php echo $translate['form']['person']['fields']['first_name'] ?>:</label>
-                                <input type="text" id="name" class="form-control" name="name" autocomplete="off" required>
-                            </div> 
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <div class="form-group">
-                                <label for="company"><?php echo $translate['form']['person']['fields']['last_name'] ?>:</label>
-                                <input type="text" id="company" class="form-control" name="company" autocomplete="off" required>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-12 col-md-6">
-                            
-                            <div class="form-group">
-                                <label for="email"><?php echo $translate['form']['person']['fields']['email'] ?>:</label>
-                                <input type="text" id="email" class="form-control" name="email" autocomplete="off" minlength="3" maxlength="64" required>
-                            </div>
-
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <div class="form-group">
-                                <label for="phone"><?php echo $translate['form']['person']['fields']['phone'] ?>:</label>
-                                <input type="text" id="phone" class="form-control" name="phone" autocomplete="off">
-                            </div>
-                        </div>
-                    </div>
-
-                    <h4><?php echo $translate['form']['address']['title'] ?></h4>
-
-                    <div class="row">
-                        <div class="col-12 col-md-6">
-                            <div class="form-group">
-                                <label for="street"><?php echo $translate['form']['address']['fields']['street'] ?>:</label>
-                                <input type="text" id="street" class="form-control" name="street" autocomplete="off">
-                            </div> 
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <div class="form-group">
-                                <label for="post"><?php echo $translate['form']['address']['fields']['post_code'] ?>:</label>
-                                <input type="text" id="post" class="form-control" name="post" autocomplete="off">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-12 col-md-6">
-                            <div class="form-group">
-                                <label for="city"><?php echo $translate['form']['address']['fields']['city'] ?>:</label>
-                                <input type="text" id="city" class="form-control" name="city" autocomplete="off">
-                            </div> 
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <div class="form-group">
-                                <label for="country"><?php echo $translate['form']['address']['fields']['country'] ?>:</label>
-                                <input type="text" id="country" class="form-control" name="country" autocomplete="off">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="d-flex gap-3 align-items-center">
-                        <h4><?php echo $translate['form']['shipping']['title'] ?></h4>
-                    
-                        <label class="switch">
-                            <input type="checkbox" id="differentShippingAddress" name="differentShippingAddress" value="1">
-                            <span class="slider round"></span>
-                        </label>
-                        <span class="d-none d-md-block"> <?php echo $translate['form']['shipping']['fields']['checkbox'] ?>:</span> 
-                    </div>
-
-                    <div id="shippingAddressField">
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="shippingStreet"><?php echo $translate['form']['shipping']['fields']['street'] ?>:</label>
-                                    <input type="text" id="shippingStreet" class="form-control" name="shippingStreet" autocomplete="off">
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="shippingPost"><?php echo $translate['form']['shipping']['fields']['post_code'] ?>:</label>
-                                    <input type="text" id="shippingPost" class="form-control" name="shippingPost" autocomplete="off">
-                                </div>
-                            </div>
-                        </div>
-            
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="shippingCity"><?php echo $translate['form']['shipping']['fields']['city'] ?>:</label>
-                                    <input type="text" id="shippingCity" class="form-control" name="shippingCity" autocomplete="off">
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="shippingCountry"><?php echo $translate['form']['shipping']['fields']['country'] ?>:</label>
-                                    <input type="text" id="shippingCountry" class="form-control" name="shippingCountry" autocomplete="off">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Prepayment Block -->
-                    <?php if ($translate['form']['prepayment']['active']): ?>
-                    
-                        <div class="mt-md-3 d-flex gap-3 align-items-center">
-                            <h4 class="accent"><?php echo $translate['form']['prepayment']['fields']['checkbox'] ?></h4>
-                        
-                            <label class="switch">
-                                <input type="checkbox" id="prepayment" name="prepayment" value="1">
-                                <span class="slider round"></span>
-                            </label>
-                            <span class="d-none d-md-block"></span> 
-                        </div>
-
-                        <div id="prepaymentFields">
-                            <div class="row">
-                                <div class="col-12 col-md-6">
-                                    <div class="form-group">
-                                        <div class="d-flex justify-content-start align-items-center gap-2 my-1 my-md-4">
-                                            <input type="checkbox" id="wire" name="wire" checked="checked">
-                                            <label for="wire"><?php echo $translate['form']['prepayment']['fields']['wire']['mode'] ?></label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <div class="form-group">
-                                        <label for="prepaymentCount"><?php echo $translate['form']['prepayment']['fields']['amount'] ?>:</label>
-                                        <input type="number" id="prepaymentCount" name="prepaymentCount" class="form-control" min="0" step="100">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    <?php endif; ?>
-                    <!-- end -->
-
-                    <div class="row my-3 my-md-5">
-
-                        <div class="col-12 col-md-9">
-                            <div class="d-flex gap-3 align-items-center">
-                                
-                                <label for="accept">
-                                    <input type="checkbox" id="accept" name="accept">       
-                                </label>
-                                <span class="d-block"><sup>*</sup><?php echo $translate['form']['order']['accept']['title'] ?> <a href="<?php echo $translate['form']['order']['accept']['link'] ?>"><?php echo $translate['form']['order']['accept']['name'] ?></a>.</span>
-                                
-                            </div>
-
-                            <div class="d-flex gap-3 align-items-center">
-                                
-                                <label for="agree">
-                                    <input type="checkbox" id="agree" name="agree">       
-                                </label>
-                                <span class="d-block"><sup>*</sup><?php echo $translate['form']['order']['agree']['title'] ?> <a href="<?php echo $translate['form']['order']['agree']['link'] ?>"><?php echo $translate['form']['order']['agree']['name'] ?></a> <?php echo $translate['form']['order']['agree']['shop'] ?>.</span>
-                                
-                            </div>
-                        </div>
-
-                        <div class="col-12 col-md-3 text-center text-md-end py-3">
-
-                            <!-- Inputs -->
-                            <input type="hidden" id="lang" name="lang" value="<?php echo $_SESSION['lang'] ?>"> 
-                            <input type="hidden" id="human" name="human" value="">
-                            <!-- end -->
-
-                            <button class="btn send" id="send" type="submit"><?php echo $translate['form']['order_summary']['button'] ?></button>
-                        </div>
-                    </div>     
-                
-            
-
-            
-            <div class="notification" id="notification">
-                <?php echo $translate['form']['order_summary']['notification'] ?>
             </div>
 
-        </footer>
-    </form>
+            <!-- Dodatkowe produkty -->
+            <div id="cartBoxPromo" class="cartBoxPromo"></div>
+
+            <!-- Podsumowanie Koszyka -->
+            <div class="cartBoxTotal p-2">
+                <div class="cartBoxTotal__value d-flex justify-content-between align-items-center gap-2"><span><?php echo $translate['form']['order_summary']['value'] ?>:</span><span id="cartValue"></span></div>
+                <div class="cartBoxTotal__delivery d-flex justify-content-between align-items-center gap-2"><span><?php echo $translate['form']['order_summary']['cost'] ?>:</span><span id="cartDelivery"></span></div>
+                <div class="cartBoxTotal__amount d-flex justify-content-end align-items-center gap-2"><span><?php echo $translate['form']['order_summary']['amount'] ?>:</span><span id="cartTotal"></span></div>
+            </div>
+
+            <!-- FORMULARZ -->
+            <div id="cartBoxForm" class="cartBoxForm my-1 p-2">
+                <h4 class="fs-6"><?php echo $translate['form']['person']['title'] ?></h4>
+            
+                <div class="form-group">
+                    <label for="name"><?php echo $translate['form']['person']['fields']['first_name'] ?>:</label>
+                    <input type="text" id="name" class="form-control" name="name" autocomplete="off" required>
+                </div> 
+                <div class="form-group">
+                    <label for="company"><?php echo $translate['form']['person']['fields']['last_name'] ?>:</label>
+                    <input type="text" id="company" class="form-control" name="company" autocomplete="off" required>
+                </div>
+                <div class="form-group">
+                    <label for="email"><?php echo $translate['form']['person']['fields']['email'] ?>:</label>
+                    <input type="text" id="email" class="form-control" name="email" autocomplete="off" minlength="3" maxlength="64" required>
+                </div>
+                <div class="form-group">
+                    <label for="phone"><?php echo $translate['form']['person']['fields']['phone'] ?>:</label>
+                    <input type="text" id="phone" class="form-control" name="phone" autocomplete="off">
+                </div>
+
+                <div class="d-flex gap-3 align-items-center">
+                            
+                    <label for="accept">
+                        <input type="checkbox" id="accept" name="accept">       
+                    </label>
+                    <span class="d-block"><sup>*</sup><?php echo $translate['form']['order']['accept']['title'] ?> <a href="<?php echo $translate['form']['order']['accept']['link'] ?>"><?php echo $translate['form']['order']['accept']['name'] ?></a>.</span>
+                    
+                </div>
+
+                <div class="d-flex gap-3 align-items-center">
+                    
+                    <label for="agree">
+                        <input type="checkbox" id="agree" name="agree">       
+                    </label>
+                    <span class="d-block"><sup>*</sup><?php echo $translate['form']['order']['agree']['title'] ?> <a href="<?php echo $translate['form']['order']['agree']['link'] ?>"><?php echo $translate['form']['order']['agree']['name'] ?></a> <?php echo $translate['form']['order']['agree']['shop'] ?>.</span>
+                    
+                </div>
+
+            </div>                            
+            <div class="submit py-1 text-center">
+                <!-- Inputs -->
+                <input type="hidden" id="lang" name="lang" value="<?php echo $lang ?>"> 
+                <input type="hidden" id="human" name="human" value="">
+                <!-- end -->
+
+                <button class="btn send" id="send" type="submit"><?php echo $translate['form']['buttons']['submit'] ?></button>
+            </div>
+        </div>
+    </section>
         
     
+        
+    <!-- Theme Settings -->
     <script src="<?php echo version('js/theme.js'); ?>"></script>
-    <!--  -->
+    <!-- Helper Functions -->
     <script src="<?php echo version('js/functions.js'); ?>"></script>
-    <!-- Fonts -->
+    <!-- Corol Pack -->
+    <script src="<?php echo version('js/color_pack.js'); ?>"></script>
+    <!-- Text Format -->
+    <script src="<?php echo version('js/personal_text.js'); ?>"></script>
+    <!-- Text Font -->
     <script src="<?php echo version('js/fonts_canvas.js'); ?>"></script>
+    <!-- Flags -->
+    <script src="<?php echo version('js/flags.js'); ?>"></script>
+    <!-- Cart -->
+    <script src="<?php echo version('js/cart.js'); ?>"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
 
+    
     <script>
-    document.getElementById('favcolor').addEventListener('input', function() {
-      var color = this.value;
-      document.getElementById('front-panel').setAttribute('fill', color);
-      document.getElementById('left-panel').setAttribute('fill', color);
-      
-      const handles = document.getElementsByClassName('handles');
-      for (let i = 0; i < handles.length; i++) {
-        handles[i].setAttribute('fill', color)
-      }
-
-      console.log(color);
-    });
-
-
-    document.addEventListener('DOMContentLoaded', function() {
-
-            const buttons = document.querySelectorAll('#personal .btn');
-
-            buttons.forEach(button => {
-                button.addEventListener('click', function() {
-                    buttons.forEach(btn => btn.classList.remove('selected'));
-                    this.classList.add('selected');
-                });
-            });
-
-            const markerCheckbox = document.getElementById('marker');
-            const personalDiv = document.getElementById('personal');
-
-            function togglePersonalDiv() {
-                if (markerCheckbox.checked) {
-                    // personalDiv.style.display = 'block';
-                    personalDiv.classList.add('visible');
-                } else {
-                    // personalDiv.style.display = 'none';
-                    personalDiv.classList.remove('visible');
-
-                }
-            }
-
-            togglePersonalDiv();
-
-            markerCheckbox.addEventListener('change', togglePersonalDiv);
-
-            // Funkcja do zamykania #personal po kliknięciu poza blokiem
-            document.addEventListener('click', function(event) {
-                const isClickInside = personalDiv.contains(event.target);
-                const isCheckboxClicked = markerCheckbox.contains(event.target);
-
-                if (!isClickInside && !isCheckboxClicked) {
-                    personalDiv.classList.remove('visible');
-                    // Opcjonalnie: odznacz checkbox
-                    // markerCheckbox.checked = false; 
-                }
-            });
-        });
-
-
-
-        // ==== Extra Products DIV
-        document.addEventListener("DOMContentLoaded", function () {
-            
-            // let defaultProduct = document.querygetElementById("favcolor");
-
-            updateTotals(); // Zaktualizuj sumy
-
-            const notification = document.getElementById('notification');
-
-
-
-            document.querySelectorAll(".featured").forEach(function (item) {
-                item.addEventListener("click", function (e) {
-                    let checkbox = this.querySelector("input[type='checkbox']");
-                    
-                    // Zapobiegamy dwukrotnemu kliknięciu, jeśli kliknięto w coś innego niż input
-                    if (e.target.tagName !== "INPUT") {
-                        checkbox.checked = !checkbox.checked;
-                    }
-
-                    // Dodajemy/Usuwamy klasę .selected
-                    item.classList.toggle("selected", checkbox.checked);
-
-                    // Jeśli checkbox jest zaznaczony, pokazujemy powiadomienie
-                    if (checkbox.checked) {
-                        notification.style.display = 'block';
-                        setTimeout(function() {
-                            notification.style.display = 'none';
-                        }, 3000); // Po 3 sekundach
-                    }
-
-                    // Po kliknięciu aktualizujemy sumy
-                    updateTotals();
-                });
-            });
-
-
-                
-
-            
-
-        });
-        // ===================================
-
-
-
-        // Shipping address
-        document.addEventListener('DOMContentLoaded', function() {
-            const checkbox = document.getElementById('differentShippingAddress');
-            const shippingAddressField = document.getElementById('shippingAddressField');
-
-            function toggleShippingAddressField() {
-                if (checkbox.checked) {
-                    shippingAddressField.style.display = 'block';
-                } else {
-                    shippingAddressField.style.display = 'none';
-                }
-            }
-
-            checkbox.addEventListener('change', toggleShippingAddressField);
-
-            // Initial check
-            toggleShippingAddressField();
-        });
-
-
         // Agree checkbox
         document.addEventListener('DOMContentLoaded', function() {
             const acceptCheckbox = document.getElementById('accept');
@@ -802,40 +940,7 @@ function displayProductCheckbox($items, $currency) {
 
 
 
-function updateTotals() {
-    let totalPrice = 0;
-    let maxShipping = 0;
-    // ===
-    // let totalShipping = 0;
 
-    // ✅ Pobranie wartości domyślnego produktu z color-picker
-    let defaultProduct = document.getElementById("favcolor");
-        if (defaultProduct) {
-            let defaultPrice = parseFloat(defaultProduct.dataset.price.replace(',', '.')) || 0;
-            let defaultShipping = parseFloat(defaultProduct.dataset.shipping.replace(',', '.')) || 0;
-
-            totalPrice += defaultPrice;
-            maxShipping = Math.max(maxShipping, defaultShipping);
-        }
-
-    document.querySelectorAll('.featured input[type="checkbox"]:checked').forEach(input => {
-        let price = parseFloat(input.dataset.price.replace(',', '.')) || 0;
-        let shipping = parseFloat(input.dataset.shipping.replace(',', '.')) || 0;
-
-        totalPrice += price;
-        maxShipping = Math.max(maxShipping, shipping); // Wybieramy najwyższą wartość
-        // ===
-        // totalShipping += shipping;
-    });
-
-    // Aktualizacja wartości w HTML
-    document.getElementById("totalPrice").textContent = totalPrice.toFixed(2).replace('.', ','); // Suma cen produktów
-    // document.getElementById("totalShipping").textContent = maxShipping.toFixed(2).replace('.', ','); // Najwyższy koszt dostawy
-    // document.getElementById("countPrice").textContent = formatPricePL(totalPrice + maxShipping); // Cena + najwyższy koszt dostawy
-    document.getElementById("countPrice").textContent = formatPricePL(totalPrice); // Cena + najwyższy koszt dostawy
-    // document.getElementById("countPrice").textContent = (totalPrice + totalShipping).toFixed(2).replace('.', ','); // Suma ceny + dostawy
-
-}
 
 function formatPricePL(number) {
     return number.toFixed(2) // Dwa miejsca po przecinku
@@ -845,54 +950,301 @@ function formatPricePL(number) {
 
   </script>
 
+
 <script>
+    // Aktualizacjia Koszyka po wybaniu koloru Paki
+    document.addEventListener('DOMContentLoaded', function() {
+    const colorMarkerElement = document.getElementById('mainProductColorMarker');
+    const colorNameElement = document.getElementById('mainProductColorName');
+    const colorPriceElement = document.getElementById('mainProductColorPrice');
 
-    const svg = document.getElementById("svg_paka");
+    function updateCartWithColor(colorName, colorPrice, colorCode, colorRal) {
+        colorNameElement.textContent = `${colorName}`;
+        colorNameElement.setAttribute('data-color', colorCode)
+        colorNameElement.setAttribute('data-color-ral', colorRal)
+        colorPriceElement.textContent = colorPrice ? `${formatNumberWithSpaces(colorPrice)}` : `${formatNumberWithSpaces(0)}`;
+        colorMarkerElement.style.backgroundColor = colorCode;
+    }
 
-    // ===
-    // Pobranie rzeczywistego rozmiaru na ekranie
-    const width = svg.getBoundingClientRect().width;
-    const height = svg.getBoundingClientRect().height;
+    const defaultColorOption = document.querySelector('#packColor a[data-default="1"]');
+    if (defaultColorOption) {
+        const colorName = defaultColorOption.getAttribute('title');
+        const colorPrice = parseFloat(defaultColorOption.getAttribute('data-price'));
+        const colorCode = defaultColorOption.getAttribute('data-color');
+        const colorRal = defaultColorOption.getAttribute('data-color-ral');
 
-    console.log(`Aktualny rozmiar SVG na ekranie: ${width}x${height}px`);
+        updateCartWithColor(colorName, colorPrice, colorCode, colorRal);
+    }
 
-    // Pobranie wartości viewBox (definiuje układ współrzędnych)
-    const viewBox = svg.viewBox.baseVal;
-    console.log(`viewBox: x=${viewBox.x}, y=${viewBox.y}, width=${viewBox.width}, height=${viewBox.height}`);
-    // ====
+    const colorOptions = document.querySelectorAll('#packColor a');
+    colorOptions.forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
 
-        const textInput = document.getElementById("personalizationText");
-        const customText = document.getElementById("previewText");
+            const colorName = this.getAttribute('title');
+            const colorPrice = parseFloat(this.getAttribute('data-price'));
+            const colorCode = this.getAttribute('data-color');
+            const colorRal = this.getAttribute('data-color-ral');
 
-        // Aktualizuje tekst na SVG w czasie rzeczywistym
-        textInput.addEventListener("input", function() {
-            customText.textContent = this.value; // Domyślny tekst jeśli pole puste
+            const colorCategory = this.getAttribute('data-category');
+            const glitterLayer = document.getElementById('glitter-layer');
+            if (colorCategory === 'brocate') {
+                createGlitter(glitterLayer, 10000, 1); // Dodaj brokat => 0 - no blinking
+            } else {
+                removeGlitter(glitterLayer); // Usuń brokat
+            }
+
+            updateCartWithColor(colorName, colorPrice, colorCode, colorRal);
+        });
+    });
+});
+
+
+
+</script>
+
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+        const offcanvasElement = document.getElementById('offcanvasRight');
+        
+        const headerContent = document.getElementById('header');
+        const mainContent = document.getElementById('main');
+        const footerContent = document.getElementById('footer');
+
+        offcanvasElement.addEventListener('show.bs.offcanvas', function () {
+            headerContent.classList.add('gray-blur');
+            mainContent.classList.add('gray-blur');
+            footerContent.classList.add('gray-blur');
         });
 
-        // Ustawia wyrównanie tekstu
-        function setAlignment(align) {
-            if (align === "left") {
-                customText.setAttribute("text-anchor", "start");
-                customText.setAttribute("x", "25"); // Lewa krawędź SVG
-                customText.setAttribute("y", "18");
-                customText.setAttribute("font-size", "2"); 
-                customText.setAttribute("transform", "rotate(0.5 10 10) scale(1, 0.5)"); 
-            } else if (align === "middle") {
-                customText.setAttribute("text-anchor", "middle");
-                customText.setAttribute("x", "52"); // Środek SVG
-                customText.setAttribute("y", "120"); 
-                customText.setAttribute("font-size", "4"); 
-                customText.setAttribute("transform", "rotate(-0.8 10 10) scale(1, 0.5)"); 
-            } else if (align === "right") {
-                customText.setAttribute("text-anchor", "end");
-                customText.setAttribute("x", "76"); // Prawa krawędź SVG
-                customText.setAttribute("y", "18"); 
-                customText.setAttribute("font-size", "2"); 
-                customText.setAttribute("transform", "rotate(0.5 10 10) scale(1, 0.5)"); 
+        offcanvasElement.addEventListener('hidden.bs.offcanvas', function () {
+            headerContent.classList.remove('gray-blur');
+            mainContent.classList.remove('gray-blur');
+            footerContent.classList.remove('gray-blur');
+        });
+        });
+    </script>
+
+<script>
+// Generator PDF/JPEG
+document.querySelectorAll('a[data-version]').forEach(link => {
+    link.addEventListener('click', function(event) {
+        event.preventDefault(); // Zapobiega przeładowaniu strony
+
+        const type = this.getAttribute('data-version').toLowerCase(); // Pobiera typ pliku (pdf/jpeg)
+        generateFile(type); // Wywołuje funkcję
+    });
+});
+</script>
+
+
+
+<script>
+function updateCartItem(data, blockId) {
+    const currency = document.getElementById('save-config').dataset.currency || 'zł' // waluta z button
+
+    const cartBox = document.getElementById('cartBox');
+    let cartItem = document.getElementById(blockId);
+
+    // Jeśli 'Text' jest pusty, usuwamy blok i aktualizujemy sumę
+    if (!data.Text) {
+        if (cartItem) {
+            cartBox.removeChild(cartItem);
+        }
+        updateCartTotal();
+        return;
+    }
+
+    // Jeśli blok istnieje, aktualizujemy go
+    if (cartItem) {
+        // Aktualizujemy każdą właściwość (Text, Color, Price, Promo itp.)
+        if (data.Title) {
+            const titleElement = cartItem.querySelector('.Title');
+            if (titleElement) {
+                titleElement.textContent = encodeHTML(data.Title);
             }
         }
-    </script>
-  
+
+        if (data.Text) {
+            const textElement = cartItem.querySelector('.Text');
+            if (textElement) {
+                textElement.textContent = encodeHTML(data.Text);
+            }
+        }
+
+        if (data.Color) {
+            const colorElement = cartItem.querySelector('.Color');
+            if (colorElement) {
+                colorElement.style.backgroundColor = encodeHTML(data.Color);
+            }
+        }
+
+        if (data.Price) {
+            const priceElement = cartItem.querySelector('.Price');
+            if (priceElement) {
+                priceElement.textContent = `${formatNumberWithSpaces(data.Price)} ${encodeHTML(currency)}`;
+            }
+        }
+
+        if (data.Promo) {
+            const promoElement = cartItem.querySelector('.Promo');
+            if (promoElement) {
+                promoElement.textContent = `${formatNumberWithSpaces(data.Promo)} ${encodeHTML(currency)}`;
+                promoElement.style.color = 'green';
+            }
+        }
+
+        if (data.Size) {
+            const sizeElement = cartItem.querySelector('.Size');
+            if (sizeElement) {
+                sizeElement.textContent = encodeHTML(data.Size);
+            }
+        }
+
+        if (data.Format) {
+            const formatElement = cartItem.querySelector('.Format');
+            if (formatElement) {
+                formatElement.textContent = encodeHTML(data.Format);
+            }
+        }
+
+        if (data.Font) {
+            const fontElement = cartItem.querySelector('.Font');
+            if (fontElement) {
+                fontElement.textContent = encodeHTML(data.Font);
+            }
+        }
+
+        if (data.Align) {
+            const alignElement = cartItem.querySelector('.Align');
+            if (alignElement) {
+                alignElement.textContent = encodeHTML(data.Align);
+            }
+        }
+    } else {
+        // Jeśli blok nie istnieje, tworzymy nowy
+        cartItem = document.createElement('div');
+        cartItem.id = blockId;
+        cartItem.classList.add('cart-item', 'customization', 'my-1');
+
+        // Budujemy HTML nowego elementu, każdy atrybut w osobnym <span>
+        let innerHTML = `
+            <div class="Title">${data.Title}</div>
+            <div class="d-flex align-items-start justify-content-between gap-2">
+                <div class="w-75">
+                    <span class="Text">${encodeHTML(data.Text)}</span>
+                    <small>
+                        <span class="Color" ${data.Color ? `style="background-color: ${data.Color};"` : ''}>${data.Color || ''}</span>
+                        <span class="Align">${encodeHTML(data.Align || '')}</span>
+                        <span class="Size">${encodeHTML(data.Size || '')}</span>
+                        <span class="Format">${encodeHTML(data.Format || '')}</span>
+                        <span class="Font">${encodeHTML(data.Font || '')}</span>
+                    </small>
+                </div>
+                <div class="price">
+                    <span class="Price">
+                        ${data.Promo
+                            ? `<del>${formatNumberWithSpaces(data.Price)} ${currency}</del> ${formatNumberWithSpaces(data.Promo)} <span class="currency">${currency}</span>`
+                            : (data.Price
+                                ? `${formatNumberWithSpaces(data.Price)} <span class="currency">${currency}</span>`
+                                : `${formatNumberWithSpaces(0)} <span class="currency">${currency}</span>`)}
+                    </span>
+                </div>
+            </div>
+        `;
+        cartItem.innerHTML = innerHTML;
+
+        cartBox.appendChild(cartItem);
+    }
+
+    // Aktualizujemy sumę cen w koszyku
+    updateCartTotal();
+}
+
+
+
+
+
+function getTextData(sectionPrefix) {
+    const title = document.getElementById(`text_${sectionPrefix}`).dataset.name || false;
+    const text = document.getElementById(`text_${sectionPrefix}`).value.trim();
+    const color = document.getElementById(`selectedColorText_${sectionPrefix}`)?.style.backgroundColor || false;
+    const align = document.querySelector(`#textAlignt_${sectionPrefix} .tools.active`)?.dataset.alignName || false;
+    const size = document.querySelector(`#textSize_${sectionPrefix} .tools.active`)?.dataset.sizeName || false;
+    const formats = Array.from(document.querySelectorAll(`#textStyle_${sectionPrefix} .tools.active`))
+        .map(tool => tool.dataset.styleName)
+        .join(', ') || false;
+    const font = document.querySelector(`#fontFamily_${sectionPrefix} canvas.active`)?.dataset.fontName || false;
+    const price = parseFloat(document.getElementById(`text_${sectionPrefix}`).dataset.price) || false;
+    const promo = document.getElementById(`text_${sectionPrefix}`).dataset.promo || false;
+
+    return {
+        Title: title,
+        Text: text,
+        Color: color,
+        Align: align,
+        Size: size,
+        Format: formats,
+        Font: font,
+        Price: price,
+        Promo: promo
+    };
+}
+
+function handleSaveConfig() {
+    
+    // const sections = ['grawerTopPanel', 'toppanel', 'door', 'side'];
+
+    // ✅ Elastyczne i skalowalne => dodasz/usuniesz sekcję, kod się dostosuje.
+    const sections = Array.from(document.querySelectorAll('input[id^="text_"]'))
+        .map(el => el.id.replace('text_', '')); // Usuwa 'text_' z ID, zostawiając same nazwy sekcji
+
+
+    sections.forEach(sectionId => {
+        const sectionData = getTextData(sectionId);
+        if (sectionData) {
+            updateCartItem(sectionData, `${sectionId}-item`);
+        } else {
+            showError(`Brak danych dla sekcji: ${sectionId}`);
+            console.warn(`Brak danych dla sekcji: ${sectionId}`);
+        }
+    });
+}
+
+
+
+document.getElementById('save-config').addEventListener('click', handleSaveConfig);
+
+
+</script>
+
+
+<script>
+    function updateCartTotal() {
+        const cartItems = document.querySelectorAll('.cart-item');
+        let total = 0;
+
+        cartItems.forEach(item => {
+            const priceElement = item.querySelector('.personalization-price');
+            if (priceElement) {
+                const priceText = priceElement.textContent || priceElement.innerHTML;
+                const priceMatch = priceText.match(/(\d+(\.\d{1,2})?)/);
+                if (priceMatch) {
+                    const price = parseFloat(priceMatch[0]);
+                    total += price;
+                }
+            }
+        });
+
+        const cartTotalElement = document.getElementById('cartTotal');
+        if (cartTotalElement) {
+            cartTotalElement.textContent = `${total.toFixed(2)}`;
+        }
+    }
+
+</script>
 
 </body>
 </html>
